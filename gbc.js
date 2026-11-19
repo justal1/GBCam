@@ -112,8 +112,9 @@ const GBC = (() => {
           d[i * 4 + 3] = 255;
         }
       } else {
+        const nz = c.cdm === 'noise';
         for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-          const i = y * w + x, off = ((B8[(y & 7) * 8 + (x & 7)] + 0.5) / 64 - 0.5) * step;
+          const i = y * w + x, off = (nz ? BLUE[(y & 63) * 64 + (x & 63)] - 0.5 : (B8[(y & 7) * 8 + (x & 7)] + 0.5) / 64 - 0.5) * step;
           for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = cl(Math.round((f[i * 3 + ch] + off) / step) * step);
           d[i * 4 + 3] = 255;
         }

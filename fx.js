@@ -21,6 +21,21 @@ const Fx = (() => {
     skinny: { label: 'Skinny', icon: '📏', make: P => (x, y) => { m.x = P.cx + (x - P.cx) * (1 + P.amt * 1.1); } },
     tile: { label: 'Multiply', icon: '🔳', make: P => { const n = 2 + Math.round(P.amt * 3); return (x, y) => { m.x = (x * n) % P.W; m.y = (y * n) % P.H; }; } },
   };
+  // ---- live "glitch" filters (operate on pixel data, some keep state between frames) ----
+  const S = { prev: null, raw: null, trail: null };
+  const resetState = () => { S.prev = S.raw = S.trail = null; };
+  const rainbow = h => [127.5 + 127.5 * Math.sin(h), 127.5 + 127.5 * Math.sin(h + 2.094), 127.5 + 127.5 * Math.sin(h + 4.188)];
+  const lum = (a, i) => 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2];
+  E.scanlines = { label: 'Scanlines', icon: '📺', filter: (s, W, H, P) => { const k = 0.65 - P.amt * 0.35; for (let y = 0; y < H; y += 1) if (y % 3 === 0) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; s[i] *= k; s[i + 1] *= k; s[i + 2] *= k; } } };
+  E.rgbsplit = { label: 'RGB split', icon: '🌈', filter: (s, W, H, P) => { const k = Math.round(2 + P.amt * 16), c = new Uint8ClampedArray(s); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; s[i] = c[(y * W + Math.max(0, x - k)) * 4]; s[i + 2] = c[(y * W + Math.min(W - 1, x + k)) * 4 + 2]; } } };
+  E.vhs = { label: 'VHS', icon: '📼', filter: (s, W, H, P) => { const c = new Uint8ClampedArray(s), t = P.t; for (let y = 0; y < H; y++) { let sh = Math.sin(y * 0.08 + t * 9) * P.amt * 5; if (((y * 7 + Math.floor(t * 12) * 13) % 97) < 3) sh += P.amt * 26; const k = y % 4 < 2 ? 0.85 : 1; for (let x = 0; x < W; x++) { const sx = Math.min(W - 1, Math.max(0, Math.round(x + sh))), j = (y * W + sx) * 4, jr = (y * W + Math.min(W - 1, sx + 3)) * 4, i = (y * W + x) * 4; s[i] = c[jr] * k; s[i + 1] = c[j + 1] * k; s[i + 2] = c[j + 2] * k; } } } };
+  E.edges = { label: 'Neon edges', icon: '💡', filter: (s, W, H, P) => { const L = new Float32Array(W * H); for (let i = 0; i < W * H; i++) L[i] = lum(s, i * 4); const o = new Uint8ClampedArray(s.length), t = P.t;
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const i = y * W + x, gx = -L[i - W - 1] - 2 * L[i - 1] - L[i + W - 1] + L[i - W + 1] + 2 * L[i + 1] + L[i + W + 1], gy = -L[i - W - 1] - 2 * L[i - W] - L[i - W + 1] + L[i + W - 1] + 2 * L[i + W] + L[i + W + 1], m = Math.min(1, Math.hypot(gx, gy) * (0.006 + P.amt * 0.012)), c = rainbow(x * 0.02 + y * 0.015 + t); o[i * 4] = c[0] * m; o[i * 4 + 1] = c[1] * m; o[i * 4 + 2] = c[2] * m; o[i * 4 + 3] = 255; } s.set(o); } };
+  E.echo = { label: 'Echo trails', icon: '👻', filter: (s, W, H, P) => { if (!S.prev || S.prev.length !== s.length) S.prev = new Uint8ClampedArray(s); const a = 0.25 + P.amt * 0.6; for (let i = 0; i < s.length; i += 4) { s[i] = s[i] * (1 - a) + S.prev[i] * a; s[i + 1] = s[i + 1] * (1 - a) + S.prev[i + 1] * a; s[i + 2] = s[i + 2] * (1 - a) + S.prev[i + 2] * a; } S.prev.set(s); } };
+  E.ghost = { label: 'Motion ghosts', icon: '🫥', filter: (s, W, H, P) => { const cur = new Uint8ClampedArray(s); if (!S.raw || S.raw.length !== s.length) S.raw = new Uint8ClampedArray(s);
+    for (let i = 0; i < s.length; i += 4) { const d = Math.abs(lum(cur, i) - lum(S.raw, i)), m = Math.min(1, d / 50 * (1 + P.amt * 2)); s[i] = cur[i] * 0.5; s[i + 1] = cur[i + 1] * 0.5 + 255 * 0.5 * m; s[i + 2] = cur[i + 2] * 0.5 + 255 * 0.45 * m; } S.raw.set(cur); } };
+  E.rainbow = { label: 'Rainbow trails', icon: '🦄', filter: (s, W, H, P) => { const cur = new Uint8ClampedArray(s); if (!S.raw || S.raw.length !== s.length) S.raw = new Uint8ClampedArray(s); if (!S.trail || S.trail.length !== s.length) S.trail = new Float32Array(s.length); const c = rainbow(P.t * 3), dec = 0.82 + P.amt * 0.13;
+    for (let i = 0; i < s.length; i += 4) { const d = Math.abs(lum(cur, i) - lum(S.raw, i)), m = Math.min(1, d / 40); for (let k = 0; k < 3; k++) { S.trail[i + k] = Math.min(255, S.trail[i + k] * dec + c[k] * m); s[i + k] = Math.min(255, cur[i + k] * 0.8 + S.trail[i + k]); } } S.raw.set(cur); } };
   function params(W, H) {
     const f = st.auto ? st.face : null, cx = f ? f.cx : st.cx * W, cy = f ? f.cy : st.cy * H;
     const R = (f ? f.w * 0.55 : Math.min(W, H) * 0.26) * st.size;
@@ -35,7 +50,8 @@ const Fx = (() => {
     o[oi] = s[a] * w0 + s[b] * w1 + s[c] * w2 + s[d] * w3; o[oi + 1] = s[a + 1] * w0 + s[b + 1] * w1 + s[c + 1] * w2 + s[d + 1] * w3; o[oi + 2] = s[a + 2] * w0 + s[b + 2] * w1 + s[c + 2] * w2 + s[d + 2] * w3; o[oi + 3] = 255;
   }
   function apply(ctx) {
-    const e = E[st.name]; if (!e || !e.make) return;
+    const e = E[st.name]; if (!e || (!e.make && !e.filter)) return;
+    if (e.filter) { const W = ctx.canvas.width, H = ctx.canvas.height, im = ctx.getImageData(0, 0, W, H); e.filter(im.data, W, H, params(W, H)); ctx.putImageData(im, 0, 0); return; }
     const W = ctx.canvas.width, H = ctx.canvas.height, im = ctx.getImageData(0, 0, W, H), s = im.data, o = new Uint8ClampedArray(s.length), map = e.make(params(W, H));
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       m.x = x; m.y = y; map(x, y); const oi = (y * W + x) * 4;
@@ -49,7 +65,7 @@ const Fx = (() => {
   const grid = $$('fxgrid');
   for (const k of Object.keys(E)) {
     const b = document.createElement('button'); b.dataset.k = k; b.innerHTML = '<span>' + E[k].icon + '</span><small>' + E[k].label + '</small>';
-    b.onclick = () => { st.name = k; mark(); badge(); try { localStorage.setItem('catcam-fx', k); } catch (e) { } };
+    b.onclick = () => { st.name = k; resetState(); mark(); badge(); try { localStorage.setItem('catcam-fx', k); } catch (e) { } };
     grid.appendChild(b);
   }
   function mark() { grid.querySelectorAll('button').forEach(b => b.className = b.dataset.k === st.name ? 'pri' : ''); }
@@ -62,7 +78,7 @@ const Fx = (() => {
   $$('fxsize').addEventListener('input', () => { st.size = +$$('fxsize').value; });
   // tap / drag on the viewfinder places the effect
   const view = $$('view');
-  const place = ev => { if (typeof tab === 'undefined' || tab !== 'fx' || (st.auto && st.face)) return; const r = view.getBoundingClientRect(); st.cx = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); st.cy = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height)); };
+  const place = ev => { if (typeof tab === 'undefined' || tab !== 'fx' || (st.auto && st.face) || (typeof Overlay !== 'undefined' && Overlay.st.drag === 'sticker')) return; const r = view.getBoundingClientRect(); st.cx = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); st.cy = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height)); };
   view.addEventListener('pointerdown', ev => { place(ev); view.setPointerCapture && view.setPointerCapture(ev.pointerId); });
   view.addEventListener('pointermove', ev => { if (ev.buttons) place(ev); });
 

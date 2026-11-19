@@ -25,3 +25,13 @@ fx.js: 14 warp effects (football head, big head, bug eyes, tiny face, swirl, fis
 
 ## GitHub Pages
 Static, no build step. Serve the repo root (Pages: Settings -> Pages -> Deploy from branch -> main / root). The Game Boy tab needs your own `camera.gb`: use "Load ROM..." on the phone once (it is kept in the browser only). The "From server" button only works when run via serve.sh with a local `rom/camera.gb`.
+
+## v8 feature round (2026-11-19)
+- **Print tab** (print.js): label printer (type text, size/align/bold/date), calibration page (ruler, grey ramp, solid black, checkerboard, line pattern, current settings), shared printBits() + preview modal.
+- **Cam tab** (shots.js): self-timer 3/5/10 s, burst x4, photo-booth strips x3/x4 (preview, print, save frames to album), 3 s clip recorder with frame scrubber + Keep.
+- **Fun tab** (fx.js, overlay.js): 22 effects incl. glitch filters (scanlines, RGB split, VHS, neon edges, echo trails, motion ghosts, rainbow trails); frames (simple/rounded/film/polaroid/Game Boy/dotted/hearts/stars), caption + date band, stickers (googly eyes with motion physics, moustache, speech bubble, emoji hats/etc.; they track the face when FaceDetector is available, otherwise drag them).
+- **Dithers**: halftone dots, newsprint lines, blue-ish noise (also in colour dither).
+- **Album** (album.js): select mode, favourites + filter, print selected (queue), Zip export (own ZIP writer), Share, batch import from camera roll with current look/effect, Install button.
+- **Game Boy tab**: APU (4 channels, WebAudio ScriptProcessor, mute button); MBC1/MBC3/MBC5 mappers (synthetic-ROM tested) so other mono GB games run; several stored games + per-game saves; save import/export; colour viewfinder (tints the Camera ROM's viewfinder with the real camera colours by locating the 128x112 image on screen).
+Tests: featest.html, gbfeat.html, mbctest.html, audiotest.html (serve with python3 -m http.server 8799; Chrome headless).
+Not verified on a real phone/printer: touch UI, real camera, face tracking, audio quality/latency, real BLE printing.

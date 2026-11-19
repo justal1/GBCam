@@ -1,0 +1,11 @@
+<!doctype html><body style="margin:0;background:#222"><iframe id=f src="index.html" width=420 height=1900 style="border:0"></iframe>
+<script>
+const f=document.getElementById('f'),mode=location.search.slice(1),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+f.onload=async()=>{const w=f.contentWindow,d=w.document;await sleep(1200);
+ w.eval(`window.__n=0;grabVideo=function(){wx.fillStyle='#8ec5ff';wx.fillRect(0,0,W,H);wx.fillStyle='#3c9a4a';wx.fillRect(0,250,W,86);wx.fillStyle='#f1c27d';wx.beginPath();wx.ellipse(192,150,58,72,0,0,7);wx.fill();wx.fillStyle='#5a3416';wx.beginPath();wx.ellipse(192,92,62,24,0,Math.PI,0);wx.fill();wx.fillStyle='#fff';wx.beginPath();wx.arc(170,140,12,0,7);wx.arc(214,140,12,0,7);wx.fill();wx.fillStyle='#222';wx.beginPath();wx.arc(170,143,5,0,7);wx.arc(214,143,5,0,7);wx.fill();Fx.apply(wx);Overlay.apply(wx);return toGray(wx.getImageData(0,0,W,H).data)}`);
+ d.getElementById('look').value='cdith';d.getElementById('look').dispatchEvent(new Event('input'));
+ const Ov=w.eval('Overlay');Ov.st.frame='polaroid';Ov.st.caption='Best day ever';Ov.st.date=true;Ov.add('googly','');Ov.add('emoji','🎩');Ov.add('moustache','');
+ d.getElementById('tab'+mode).click();
+ for(let i=0;i<5;i++){w.eval('render')(w.eval('grabVideo()'));await sleep(80)}
+ console.log('T: DONE')};
+</script></body>

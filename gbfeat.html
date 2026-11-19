@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#222;color:#fff;font:11px monospace"><pre id=lg style="margin:0;height:200px;overflow:hidden"></pre><iframe id=f src="index.html" width=420 height=1200 style="border:0"></iframe><script>
+const f=document.getElementById('f'),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+window.onerror=(m,u,l)=>{document.getElementById('lg').textContent+='ERR '+m+' '+l+'\n'};window.onunhandledrejection=e=>{document.getElementById('lg').textContent+='REJ '+(e.reason&&e.reason.stack||e.reason)+'\n'};
+f.onload=async()=>{const L=(...a)=>{console.log('T:',...a);document.getElementById('lg').textContent+=a.join(' ')+'\n'},w=f.contentWindow,d=w.document;await sleep(1200);
+ d.getElementById('tabgb').click();await sleep(300);
+ const rom=new Uint8Array(await (await fetch('rom/camera.gb')).arrayBuffer());
+ L('rom bytes',rom.length);try{const ok=await Promise.race([w.gbui.start(rom),sleep(5000).then(()=>'TIMEOUT')]);L('start ->',ok)}catch(e){L('start threw',e&&e.stack||e)}
+ for(let i=0;i<100&&!(w.gbui.gb&&w.gbui.gb.cameraSource&&w.gbui.gb.cameraColour);i++)await sleep(50);await sleep(300);w.eval("tab='cam'");const gb=w.gbui.gb;L('mapper',gb.mbc);
+ // colourful synthetic scene into the sensor (gray + RGB)
+ const S=w.gbui.sensorImg,C=w.gbui.sensorRGB;
+ for(let y=0;y<112;y++)for(let x=0;x<128;x++){let r,g,b;if(y>78){r=40;g=150;b=60}else{r=60+y;g=120+y;b=235-y}
+   if(Math.hypot(x-64,y-48)<22){r=240;g=60;b=50}if(x>100&&y<30&&Math.hypot(x-110,y-18)<9){r=255;g=220;b=40}
+   const i=y*128+x;C[i*4]=r;C[i*4+1]=g;C[i*4+2]=b;C[i*4+3]=255;S[i]=0.299*r+0.587*g+0.114*b}
+ const run=n=>{for(let i=0;i<n;i++)gb.runFrame();w.gbui.drawFrame()};
+ const press=(k,n=8)=>{gb.setKey(k,true);run(n);gb.setKey(k,false);run(25)};
+ run(400);press('start');run(60);press('left');press('a');run(100);press('a');run(200);
+ L('captures',gb.captures,'place',JSON.stringify(w.gbui.place));
+ d.getElementById('gbscreen').scrollIntoView();
+ // games list
+ await sleep(500);L('games in select',d.getElementById('gbgame').options.length,d.getElementById('gbgame').options[0].textContent);
+ // audio: enable apu & count samples
+ gb.apu.on=true;gb.apu.sampleCycles=4194304/48000;run(120);L('audio buffered',gb.apu.w-gb.apu.r);
+ L('cameraSource set',typeof gb.cameraSource,gb.cameraSource&&gb.cameraSource()===S,'same gb as gbui',gb===w.gbui.gb,'S[0..3]',S[0],S[5000],S[12000],'camRGB',!!gb.camRGB,'camIds',!!gb.camIds);
+ run(1);w.gbui.drawFrame();L('place after',JSON.stringify(w.gbui.place));
+ L('DONE')};
+</script></body>

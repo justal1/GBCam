@@ -39,6 +39,15 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
 #prog i{display:block;height:100%;width:0;background:var(--acc)}
 [hidden]{display:none!important}
 .sub{color:var(--dim);font-size:12px;margin:4px 0}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px}
+#modalcard{background:var(--panel);border-radius:12px;padding:12px;max-width:440px;width:100%}
+#count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:120px;font-weight:800;color:#fff;text-shadow:0 0 12px #000,0 0 30px #000;pointer-events:none}
+button.rec{background:#b3202a;border-color:#b3202a;color:#fff}
+input[type=text],textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid #2f353d;border-radius:10px;padding:10px 12px;width:100%}
+#stk{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}#stk button{padding:8px 10px}
+#gallery .it{position:relative}#gallery .star{position:absolute;top:2px;right:5px;color:#ffd23f;font-style:normal;text-shadow:0 0 3px #000}
+#gallery .ck{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.45);font-style:normal;color:#fff;text-align:center;font-size:13px;line-height:17px}
+#gallery .ck.on{background:var(--acc);color:var(--accd);border-color:var(--acc)}
 #fxgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 #fxgrid button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px}
 #fxgrid button span{font-size:26px;line-height:1}#fxgrid button small{font-size:11px}
@@ -58,11 +67,11 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
 
 </style></head>
 <body>
-<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v6</small></h1><span id="status">printer: not connected</span></header>
-<nav id="tabs" class="row"><button id="tabcam" class="pri">📷 Camera</button><button id="tabfx">✨ Effects</button><button id="tabgb">🎮 Game Boy</button></nav>
+<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v8</small></h1><span id="status">printer: not connected</span></header>
+<nav id="tabs" class="row"><button id="tabcam" class="pri">📷 Cam</button><button id="tabfx">✨ Fun</button><button id="tabpr">🖨 Print</button><button id="tabgb">🎮 GB</button></nav>
 
 <div id="camview">
-<div id="stage"><canvas id="view" width="384" height="336"></canvas><div id="hint">Starting camera…</div></div>
+<div id="stage"><canvas id="view" width="384" height="336"></canvas><div id="hint">Starting camera…</div><div id="count" hidden></div></div>
 <div id="prog"><i></i></div>
 <div class="row" style="margin-top:10px">
   <select id="look"><option value="mono">Look: Mono</option><option value="gbc">Look: Game Boy Color (tile palettes)</option><option value="cdith">Look: Colour dither (better camera)</option></select>
@@ -70,7 +79,7 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
 <div class="row" id="colourctl" hidden>
   <select id="res"><option value="128">128×112 sensor</option><option value="192" selected>192×168</option><option value="384">384×336 full</option></select>
   <select id="levels"><option value="2">8 colours</option><option value="3">27 colours</option><option value="4" selected>64 colours</option><option value="6">216 colours</option></select>
-  <select id="cdm"><option value="bayer">Bayer</option><option value="fs">Floyd–Steinberg</option></select>
+  <select id="cdm"><option value="bayer">Bayer</option><option value="fs">Floyd–Steinberg</option><option value="noise">Blue-ish noise</option></select>
 </div>
 <div class="sub" id="lookhint" style="margin-top:0">Colour look is a preview and PNG only; the printer always prints black &amp; white from the same photo.</div>
 
@@ -80,6 +89,12 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
   <button id="shutter" class="pri" aria-label="Shutter">●</button>
   <button id="print" class="pri" disabled>🖨 Print</button>
 </div>
+<div class="row" id="shotrow">
+  <select id="shotmode"><option value="single">Single shot</option><option value="burst">Burst ×4</option><option value="strip3">Photo strip ×3</option><option value="strip4">Photo strip ×4</option></select>
+  <select id="timer"><option value="0">No timer</option><option value="3">3 s timer</option><option value="5">5 s timer</option><option value="10">10 s timer</option></select>
+  <button id="clipbtn">🎞 Clip</button>
+</div>
+<div class="row" id="clipbar" hidden><input id="clipscrub" type="range" min="0" max="10" value="5" style="flex:3"><button id="clipkeep">💾 Keep</button><button id="clipdone">Done</button></div>
 <div class="row">
   <button id="connect">Connect printer</button>
   <button id="pick">Load photo…</button>
@@ -103,6 +118,9 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
     <option value="gbcam">Game Boy Camera</option>
     <option value="bayer">Bayer dither</option>
     <option value="fs">Floyd–Steinberg</option>
+    <option value="halftone">Halftone dots</option>
+    <option value="lines">Newsprint lines</option>
+    <option value="noise">Blue-ish noise</option>
     <option value="thresh">Hard threshold</option>
   </select>
   <select id="pal">
@@ -127,18 +145,42 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
   </div>
   <label class="chk"><input type="checkbox" id="fxauto"> Follow my face</label>
   <div class="sub" id="fxhint">Tap or drag on the picture to place the effect. Works with every look, and with Print.</div>
+  <div class="sub" style="margin-top:16px">Frame &amp; caption</div>
+  <div class="row"><select id="ovframe"></select><select id="ovcappos"><option value="bottom">Caption at bottom</option><option value="top">Caption at top</option></select></div>
+  <div class="row"><input id="ovcap" type="text" placeholder="Caption (optional)" maxlength="60" style="flex:2"><label class="chk" style="margin:0"><input type="checkbox" id="ovdate"> Date</label></div>
+  <div class="sub" style="margin-top:16px">Stickers (tap one, then drag it on the picture; with “Follow my face” they track you)</div>
+  <div id="stk"></div>
+  <div class="ctl"><span>Sticker size</span><input id="ovsize" type="range" min="20" max="240" step="2" value="70"><output></output></div>
+  <div class="row"><label class="chk"><input type="radio" name="ovdrag" value="effect" checked> Drag moves effect</label><label class="chk"><input type="radio" name="ovdrag" value="sticker"> Drag moves sticker</label></div>
+  <div class="row"><button id="ovdel">Delete sticker</button><button id="ovclear">Clear all</button></div>
 </div>
 </div><!-- /camview -->
 
+<div id="printview" hidden>
+  <div class="sub">Label printer</div>
+  <textarea id="lbltext" rows="3" placeholder="Type something to print…"></textarea>
+  <div class="ctl" style="margin-top:8px"><span>Text size</span><input id="lblsize" type="range" min="16" max="96" step="2" value="48"><output></output></div>
+  <div class="row"><select id="lblalign"><option value="center">Centre</option><option value="left">Left</option><option value="right">Right</option></select><label class="chk" style="margin:0"><input type="checkbox" id="lblbold" checked> Bold</label><label class="chk" style="margin:0"><input type="checkbox" id="lbldate"> Date</label></div>
+  <div class="row"><button id="lblprev">Preview</button><button id="lblprint" class="pri">🖨 Print label</button></div>
+  <div class="sub" style="margin-top:18px">Calibration — print this once on a new printer to tune darkness, bit order and speed</div>
+  <div class="row"><button id="calprev">Preview test page</button><button id="calprint" class="pri">🖨 Print test page</button></div>
+  <div class="row"><button id="prconnect">Connect printer</button></div>
+  <div class="sub">Photo queue: in the Cam tab, open Photos → Select, tick photos and tap 🖨.</div>
+</div>
+<div id="modal" hidden><div id="modalcard"><div id="modalbody"></div></div></div>
+
 <div id="gbview" hidden>
-  <div id="gbstage"><canvas id="gbscreen" width="160" height="144"></canvas><div id="gbhint">Tap “From server” to fetch the ROM from your Mac, or “Load ROM…” to pick camera.gb.</div></div>
+  <div id="gbstage"><canvas id="gbscreen" width="160" height="144"></canvas><div id="gbhint">Tap “Add ROM…” to pick a Game Boy ROM (e.g. camera.gb), or “From server” if your Mac is serving rom/camera.gb.</div></div>
   <div id="gbpad">
     <div id="dpad"><button data-k="up">▲</button><button data-k="left">◀</button><button data-k="right">▶</button><button data-k="down">▼</button></div>
     <div id="midbtns"><button data-k="select">SELECT</button><button data-k="start">START</button></div>
     <div id="abtns"><button data-k="b">B</button><button data-k="a">A</button></div>
   </div>
-  <div class="row"><button id="gbflip">⟲ Flip camera</button><button id="gbrom">Load ROM…</button><button id="gbfetch">From server</button><input id="gbfile" type="file" hidden></div>
-  <div class="row"><button id="gbconnect">Connect printer</button><button id="gbsave">Export save</button><button id="gbreset">Reset</button></div>
+  <div class="row"><select id="gbgame"><option value="">(no game loaded)</option></select><button id="gbmute" style="flex:0 0 52px">🔊</button></div>
+  <div class="row"><button id="gbflip">⟲ Flip</button><button id="gbrom">Add ROM…</button><button id="gbfetch">From server</button><input id="gbfile" type="file" hidden multiple></div>
+  <div class="row"><button id="gbconnect">Connect printer</button><button id="gbsave">Export save</button><button id="gbimport">Import save</button><input id="gbsavefile" type="file" hidden></div>
+  <div class="row"><button id="gbreset">Reset</button><button id="gbdelgame">Remove game</button></div>
+  <label class="chk"><input type="checkbox" id="gbcolour" checked> Colour viewfinder (Game Boy Camera ROM: tints the picture with the real camera colours)</label>
   <div class="ctl"><span>Sensor bright</span><input id="gbgain" type="range" min="0.4" max="3" step="0.05" value="1"><output></output></div>
   <label class="chk"><input type="checkbox" id="gbauto" checked> Auto-send game prints to the cat printer</label>
   <div class="row"><select id="gbpal"><option value="bw">Grey screen</option>
@@ -149,7 +191,7 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
     <option value="mint">Mint</option>
     <option value="sepia">Sepia</option></select></div>
   <div id="gbprint" hidden><canvas id="gbpage" width="160" height="144"></canvas><div class="row"><button id="gbsend" class="pri">Send to cat printer</button><button id="gbpng">Save PNG</button><button id="gbclose">Dismiss</button></div></div>
-  <div class="sub">Needs the real Game Boy Camera ROM, kept only in this browser. In the game: VIEW → photo → A → print.</div>
+  <div class="sub">ROMs and saves stay in this browser only. Plain, MBC1, MBC3, MBC5 and Game Boy Camera cartridges are supported (mono Game Boy games; no Game Boy Color-only games). Printing from any game that supports the Game Boy Printer comes out on the cat printer. In the Camera game: VIEW → photo → A → print.</div>
 </div>
 <details><summary>Printer settings</summary>
   <div class="ctl" style="margin-top:10px">
@@ -165,11 +207,14 @@ label.chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--dim)}
   <div class="sub">Paper is 384 dots wide. If nothing prints, check the log below.</div>
 </details>
 
-<div id="camview2"><details open><summary>Photos</summary><div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
+<div id="camview2"><details open><summary>Photos</summary>
+<div class="row" id="albbar" style="margin-top:10px"><button id="albsel">Select</button><button id="albfav">★ Favs</button><button id="albbatch">Import photos…</button><button id="install" hidden>Install</button><input id="batchfile" type="file" accept="image/*" multiple hidden></div>
+<div class="row" id="selbar" hidden><span id="selcount" class="sub"></span><button id="selprint" title="Print">🖨</button><button id="selfav" title="Favourite">★</button><button id="selzip">Zip</button><button id="selshare">Share</button><button id="seldel" title="Delete">🗑</button></div>
+<div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div id="log"></div></details>
 
-<script src="gbc.js?v=6"></script>
-<script src="fx.js?v=6"></script>
+<script src="gbc.js?v=8"></script>
+<script src="fx.js?v=8"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -198,6 +243,10 @@ function sharpen(g,w,h,amt){if(amt<=0)return;const o=new Float32Array(g.length);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;for(let j=-1;j<=1;j++){const yy=y+j;if(yy<0||yy>=h)continue;for(let i=-1;i<=1;i++){const xx=x+i;if(xx<0||xx>=w)continue;s+=g[yy*w+xx];n++}}
     o[y*w+x]=g[y*w+x]+amt*(g[y*w+x]-s/n)}
   for(let i=0;i<g.length;i++)g[i]=o[i]}
+// blue-ish noise threshold tile (high-passed white noise, rank-ordered)
+const BLUE=(()=>{const N=64,n=N*N;let sd=12345;const rnd=()=>(sd=(sd*1664525+1013904223)>>>0)/4294967296;const w=new Float32Array(n);for(let i=0;i<n;i++)w[i]=rnd();
+  const hp=new Float32Array(n);for(let y=0;y<N;y++)for(let x=0;x<N;x++){let s=0;for(let j=-2;j<=2;j++)for(let i=-2;i<=2;i++)s+=w[((y+j+N)%N)*N+((x+i+N)%N)];hp[y*N+x]=w[y*N+x]-s/25}
+  const idx=Array.from({length:n},(_,i)=>i).sort((a,b)=>hp[a]-hp[b]);const o=new Float32Array(n);idx.forEach((p,r)=>o[p]=(r+0.5)/n);return o})();
 // gray: Float32Array W*H in 0..1 (0 black). Returns {bits:Uint8Array(W*H) 1=ink, shades:Uint8Array(GW*GH) 0..3 or null}
 function process(gray,c){
   const gb=c.mode==='gbcam';const w=gb?GW:W,h=gb?GH:H;
@@ -219,6 +268,12 @@ function process(gray,c){
     const e=Float32Array.from(g);
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,o=e[i],n=o<0.5?0:1,er=o-n;bits[i]=n?0:1;
       if(x+1<W)e[i+1]+=er*7/16;if(y+1<H){if(x>0)e[i+W-1]+=er*3/16;e[i+W]+=er*5/16;if(x+1<W)e[i+W+1]+=er/16}}
+  }else if(c.mode==='halftone'){
+    const cell=5.5,ca=Math.SQRT1_2;for(let y=0;y<H;y++)for(let x=0;x<W;x++){const u=(x+y)*ca/cell,v=(y-x)*ca/cell,t=0.5+0.25*(Math.cos(6.2832*u)+Math.cos(6.2832*v));bits[y*W+x]=g[y*W+x]<t?1:0}
+  }else if(c.mode==='lines'){
+    const sn=Math.sin(0.26),cs=Math.cos(0.26);for(let y=0;y<H;y++)for(let x=0;x<W;x++){const u=(x*sn+y*cs)/4.2,t=0.5+0.5*Math.cos(6.2832*u);bits[y*W+x]=g[y*W+x]<t?1:0}
+  }else if(c.mode==='noise'){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)bits[y*W+x]=g[y*W+x]<BLUE[(y&63)*64+(x&63)]?1:0
   }else{for(let i=0;i<g.length;i++)bits[i]=g[i]<0.5?1:0}
   return{bits,shades};
 }
@@ -296,7 +351,7 @@ function grabVideo(){
   const vw=video.videoWidth,vh=video.videoHeight;if(!vw)return null;
   const s=Math.max(W/vw,H/vh),dw=vw*s,dh=vh*s;
   wx.save();if(facing==='user'){wx.translate(W,0);wx.scale(-1,1)}wx.drawImage(video,(W-dw)/2,(H-dh)/2,dw,dh);wx.restore();
-  Fx.apply(wx);
+  Fx.apply(wx);Overlay.apply(wx);
   return toGray(wx.getImageData(0,0,W,H).data);
 }
 const rgbc=document.createElement('canvas'),rgbx=rgbc.getContext('2d',{willReadFrequently:true});
@@ -309,15 +364,15 @@ const PAL={bw:[[244,241,232],[170,168,160],[85,84,80],[20,20,24]],gb:[[155,188,1
   berry:[[255,230,240],[240,140,190],[140,50,130],[40,10,60]],mint:[[236,255,236],[150,220,170],[50,140,120],[10,50,60]],
   sepia:[[250,240,214],[205,170,120],[120,84,52],[40,24,14]]};
 function palOf(k){return PAL[k]||(k==='grey'?PAL.bw:PAL.gb)}
-function draw(res,c){
-  const img=vx.createImageData(W,H),d=img.data,p=palOf(c.pal);
+function draw(res,c,ctx){
+  ctx=ctx||vx;const img=ctx.createImageData(W,H),d=img.data,p=palOf(c.pal);
   if(res.shades){for(let y=0;y<H;y++)for(let x=0;x<W;x++){const col=p[3-res.shades[(y/3|0)*GW+(x/3|0)]],o=(y*W+x)*4;d[o]=col[0];d[o+1]=col[1];d[o+2]=col[2];d[o+3]=255}}
   else{const lt=p[0],dk=p[3];for(let i=0;i<W*H;i++){const o=i*4,v=res.bits[i]?dk:lt;d[o]=v[0];d[o+1]=v[1];d[o+2]=v[2];d[o+3]=255}}
-  vx.putImageData(img,0,0);
+  ctx.putImageData(img,0,0);
 }
 let lastT=0;
 let tab='cam';
-function frame(t){requestAnimationFrame(frame);if(tab==='gb')return;
+function frame(t){requestAnimationFrame(frame);if(tab==='gb'||tab==='pr')return;
   if(t-lastT<70)return;lastT=t;
   if(live){const g=grabVideo();if(!g)return;render(g)}
 }
@@ -332,45 +387,28 @@ async function dbPut(o){try{const d=await idb();return await new Promise(r=>{con
 async function dbDel(id){try{const d=await idb();await new Promise(r=>{const q=d.transaction('shots','readwrite').objectStore('shots').delete(id);q.onsuccess=()=>r()})}catch(e){}}
 function thumbOf(bits){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H);
   for(let i=0;i<W*H;i++){const v=bits[i]?20:244;im.data.set([v,v,v==20?24:v==244?232:v,255],i*4)}x.putImageData(im,0,0);return c}
-async function refreshGallery(){
-  const all=(await dbAll()).reverse();const g=$('gallery');g.innerHTML='';$('empty').style.display=all.length?'none':'block';
-  for(const s of all){const im=new Image();im.src=s.thumb;if(s.id===stillId)im.className='sel';im.onclick=()=>openStill(s);g.appendChild(im)}
-}
+function refreshGallery(){return Album.refresh()}
 async function capture(){
-  const g=live?grabVideo():curGray;if(!g)return;
-  const c=cfg(),r=process(g,c);
-  const gray8=new Uint8Array(W*H);for(let i=0;i<g.length;i++)gray8[i]=g[i]*255;
+  const g=live?grabVideo():curGray;if(!g)return null;
   const rgb=new Uint8ClampedArray(rgbFor(192,168));
-  let thumb;if(c.look!=='mono'){const tc=document.createElement('canvas');tc.width=128;tc.height=112;tc.getContext('2d').drawImage(view,0,0,128,112);thumb=tc.toDataURL('image/png')}else thumb=thumbOf(r.bits).toDataURL('image/png');
-  const id=await dbPut({gray:gray8,rgb,thumb,t:Date.now()});
-  navigator.vibrate&&navigator.vibrate(30);
-  flash();log('saved shot',id);refreshGallery();
+  const id=await Album.save(g,rgb);flash();return id;
 }
 function flash(){view.style.filter='brightness(3)';setTimeout(()=>view.style.filter='',90)}
 function openStill(s){live=false;stillId=s.id;still=s;if(s.rgb){stillCv.width=192;stillCv.height=168;stillCx.putImageData(new ImageData(new Uint8ClampedArray(s.rgb),192,168),0,0)}else{stillCv.width=W;stillCv.height=H;const im=new ImageData(W,H);for(let i=0;i<W*H;i++){const v=s.gray[i];im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=v;im.data[i*4+3]=255}stillCx.putImageData(im,0,0)}srcCv=stillCv;$('reviewbar').style.display='flex';
   const g=new Float32Array(W*H);for(let i=0;i<g.length;i++)g[i]=s.gray[i]/255;render(g);refreshGallery()}
-function backToCam(){live=true;srcCv=work;stillId=null;still=null;$('reviewbar').style.display='none';refreshGallery()}
+function backToCam(){live=true;srcCv=work;if($('clipbar'))$('clipbar').hidden=true;stillId=null;still=null;$('reviewbar').style.display='none';refreshGallery()}
 
 // ---------- actions ----------
-async function doPrint(){
-  if(!lastBits)return;const c=cfg();$('print').disabled=true;const pr=$('prog');pr.style.display='block';const bar=pr.firstElementChild;
-  try{
-    const job=buildJob(lastBits,c);log('job',job.length,'packets');
-    const send=c.mock?mockSend:bleSend;
-    if(!c.mock&&!ble.wc)await bleConnect();
-    await send(job,c,p=>bar.style.width=(p*100)+'%');
-    log('print done');
-  }catch(e){log('PRINT ERROR',e.message);alert('Print failed: '+e.message)}
-  finally{$('print').disabled=false;setTimeout(()=>{pr.style.display='none';bar.style.width=0},800)}
-}
-$('shutter').onclick=()=>{if(!live){backToCam();return}capture()};
+async function doPrint(){if(!lastBits)return;$('print').disabled=true;await Prt.printBits(lastBits,'photo');$('print').disabled=false}
+$('shutter').onclick=()=>{if(!live){backToCam();return}Shots.shutter()};
+$('prconnect').onclick=()=>$('connect').click();
 $('print').onclick=doPrint;
 $('flip').onclick=()=>{facing=facing==='user'?'environment':'user';startCam()};
 $('connect').onclick=async()=>{try{await bleConnect()}catch(e){if(e.name!=='NotFoundError'){log('connect error',e.message);alert(e.message)}}};
 $('pick').onclick=()=>$('file').click();
 $('file').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const bmp=await createImageBitmap(f);loadBitmap(bmp);ev.target.value=''};
 function loadBitmap(bmp){const s=Math.max(W/bmp.width,H/bmp.height),dw=bmp.width*s,dh=bmp.height*s;wx.drawImage(bmp,(W-dw)/2,(H-dh)/2,dw,dh);
-  srcCv=work;Fx.apply(wx);const g=toGray(wx.getImageData(0,0,W,H).data);live=false;$('reviewbar').style.display='flex';$('hint').style.display='none';render(g)}
+  srcCv=work;Fx.apply(wx);Overlay.apply(wx);const g=toGray(wx.getImageData(0,0,W,H).data);live=false;$('reviewbar').style.display='flex';$('hint').style.display='none';render(g)}
 $('back').onclick=backToCam;
 $('del').onclick=async()=>{if(stillId!=null){await dbDel(stillId)}backToCam()};
 $('save').onclick=()=>{const a=document.createElement('a');a.href=view.toDataURL('image/png');a.download='catcam-'+Date.now()+'.png';a.click()};
@@ -378,9 +416,13 @@ for(const k of ids)$(k).addEventListener('input',()=>{saveSettings();syncOutputs
 
 loadSettings();syncOutputs();function showColourCtl(){$('colourctl').hidden=$('look').value!=='cdith'}showColourCtl();$('look').addEventListener('input',showColourCtl);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-refreshGallery();startCam();requestAnimationFrame(frame);
+startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="gb.js?v=6"></script>
-<script src="gbui.js?v=6"></script>
+<script src="print.js?v=8"></script>
+<script src="overlay.js?v=8"></script>
+<script src="shots.js?v=8"></script>
+<script src="album.js?v=8"></script>
+<script src="gb.js?v=8"></script>
+<script src="gbui.js?v=8"></script>
 </body></html>
