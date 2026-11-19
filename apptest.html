@@ -1,0 +1,27 @@
+<!doctype html><body style="margin:0;background:#222"><iframe id=f src="index.html" width=420 height=1700 style="border:0" allow="camera"></iframe>
+<script>
+const f=document.getElementById('f');
+f.onload=async()=>{
+ const L=(...a)=>console.log('T:',...a);
+ const w=f.contentWindow;
+ await new Promise(r=>setTimeout(r,1500));
+ w.document.getElementById('tabgb').click();
+ const rom=new Uint8Array(await (await fetch('rom/camera.gb')).arrayBuffer());
+ await w.gbui.start(rom);
+ const gb=w.gbui.gb;
+ const run=n=>w.gbui.tick(n);
+ const press=(k,n=8)=>{gb.setKey(k,true);run(n);gb.setKey(k,false);run(25)};
+ await new Promise(r=>setTimeout(r,1000));
+ {const s=w.gbui.sensorImg;for(let y=0;y<112;y++)for(let x=0;x<128;x++){const d=Math.hypot(x-64,y-56);s[y*128+x]=Math.max(25,255-d*3.2)-((x>45&&x<58&&y>40&&y<52)||(x>70&&x<83&&y>40&&y<52)?160:0)}}
+ run(400);press('start');run(60);press('left');press('a');run(150);
+ L('captures',gb.captures,'exp',((gb.cam[2]<<8)|gb.cam[3]).toString(16),'video',w.eval('video.videoWidth'),'sensor mean',w.gbui.sensorImg.reduce((a,b)=>a+b,0)/w.gbui.sensorImg.length);
+ w.document.getElementById('gbscreen').scrollIntoView();
+ // glue test: a synthetic printer page through the app's print path with mock printer
+ w.document.getElementById('mock').checked=true;
+ const sh=new Uint8Array(160*144);for(let y=0;y<144;y++)for(let x=0;x<160;x++)sh[y*160+x]=Math.min(3,Math.floor((x/160)*4));
+ w.gbui.onPage({w:160,h:144,shades:sh});
+ await new Promise(r=>setTimeout(r,3000));
+ L('mock packets',w.catcam.mock.sent.length);
+ L('DONE');
+};
+</script></body>

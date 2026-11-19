@@ -1,0 +1,7 @@
+# never commit these
+rom/
+.cert/
+*.gb
+*.gbc
+*.sav
+.DS_Store
