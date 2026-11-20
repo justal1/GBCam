@@ -1,0 +1,27 @@
+<!doctype html><body style="margin:0;background:#222;color:#0f0;font:12px monospace"><pre id=o></pre><div id=g style="display:flex;flex-wrap:wrap;gap:4px"></div><iframe id=f src="index.html" width=420 height=300 style="border:0;position:absolute;left:-9999px"></iframe><script>
+const L=t=>document.getElementById('o').textContent+=t+'\n';
+document.getElementById('f').onload=async()=>{try{
+ await new Promise(r=>setTimeout(r,900));
+ const w=document.getElementById('f').contentWindow,Fx=w.eval('Fx');
+ // synthetic scene: gradient bg, face
+ const sc=document.createElement('canvas');sc.width=384;sc.height=336;const g=sc.getContext('2d');
+ const bg=g.createLinearGradient(0,0,384,336);bg.addColorStop(0,'#8fb7d9');bg.addColorStop(1,'#35506b');g.fillStyle=bg;g.fillRect(0,0,384,336);
+ g.fillStyle='#e8b896';g.beginPath();g.ellipse(192,190,85,112,0,0,7);g.fill();g.fillStyle='#4a2f1d';g.beginPath();g.ellipse(192,100,92,48,0,0,7);g.fill();
+ g.fillStyle='#fff';for(const x of [160,224]){g.beginPath();g.ellipse(x,175,17,10,0,0,7);g.fill();}g.fillStyle='#222';for(const x of [160,224]){g.beginPath();g.arc(x,175,6,0,7);g.fill();}
+ g.strokeStyle='#8a3b3b';g.lineWidth=5;g.beginPath();g.arc(192,230,28,0.2,2.9);g.stroke();
+ g.fillStyle='#c0392b';g.fillRect(100,300,184,60);
+ Fx.st.cx=192/384;Fx.st.cy=185/336;Fx.st.amt=0.6;
+ const keys=Object.keys(Fx.E).filter(k=>k!=='none');L('effects: '+keys.length);
+ const bad=[];
+ for(const k of keys){
+   Fx.st.name=k;
+   const c=document.createElement('canvas');c.width=384;c.height=336;const x=c.getContext('2d',{willReadFrequently:true});
+   const times=[];let err=null;
+   try{for(let n=0;n<3;n++){x.drawImage(sc,0,0);const t=performance.now();Fx.apply(x);times.push(performance.now()-t);await new Promise(r=>setTimeout(r,60))}}catch(e){err=e.message}
+   const d=x.getImageData(0,0,384,336).data;let diff=0;const o=sc.getContext('2d').getImageData(0,0,384,336).data;for(let i=0;i<d.length;i+=16)diff+=Math.abs(d[i]-o[i]);
+   L(k.padEnd(13)+(err?'ERR '+err:'ok')+'  ms/frame '+times.map(t=>t.toFixed(0)).join('/')+'  changed '+(diff>0?'yes':'NO'));
+   const cell=document.createElement('div');cell.style.cssText='color:#fff;width:192px';cell.appendChild(c);c.style.width='192px';const lb=document.createElement('div');lb.textContent=k;cell.appendChild(lb);document.getElementById('g').appendChild(cell);
+ }
+ L('DONE');
+}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>

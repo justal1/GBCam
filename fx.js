@@ -23,7 +23,8 @@ const Fx = (() => {
   };
   // ---- live "glitch" filters (operate on pixel data, some keep state between frames) ----
   const S = { prev: null, raw: null, trail: null };
-  const resetState = () => { S.prev = S.raw = S.trail = null; };
+  const resetHooks = [], selectHooks = [];
+  const resetState = () => { S.prev = S.raw = S.trail = null; resetHooks.forEach(f => f()); };
   const rainbow = h => [127.5 + 127.5 * Math.sin(h), 127.5 + 127.5 * Math.sin(h + 2.094), 127.5 + 127.5 * Math.sin(h + 4.188)];
   const lum = (a, i) => 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2];
   E.scanlines = { label: 'Scanlines', icon: '📺', filter: (s, W, H, P) => { const k = 0.65 - P.amt * 0.35; for (let y = 0; y < H; y += 1) if (y % 3 === 0) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; s[i] *= k; s[i + 1] *= k; s[i + 2] *= k; } } };
@@ -63,10 +64,16 @@ const Fx = (() => {
   // ---- UI ----
   const $$ = id => document.getElementById(id);
   const grid = $$('fxgrid');
-  for (const k of Object.keys(E)) {
-    const b = document.createElement('button'); b.dataset.k = k; b.innerHTML = '<span>' + E[k].icon + '</span><small>' + E[k].label + '</small>';
-    b.onclick = () => { st.name = k; resetState(); mark(); badge(); try { localStorage.setItem('catcam-fx', k); } catch (e) { } };
-    grid.appendChild(b);
+  function buildGrid() {
+    grid.innerHTML = ''; let lastG = null;
+    for (const k of Object.keys(E)) {
+      const g = E[k].group || (E[k].filter ? 'Glitch filters' : E[k].make ? 'Warps' : '');
+      if (g && g !== lastG) { const h = document.createElement('div'); h.className = 'fxh'; h.textContent = g; grid.appendChild(h); } lastG = g || lastG;
+      const b = document.createElement('button'); b.dataset.k = k; b.innerHTML = '<span>' + E[k].icon + '</span><small>' + E[k].label + '</small>';
+      b.onclick = () => { st.name = k; resetState(); mark(); badge(); selectHooks.forEach(f => f(k)); try { localStorage.setItem('catcam-fx', k); } catch (e) { } };
+      grid.appendChild(b);
+    }
+    mark();
   }
   function mark() { grid.querySelectorAll('button').forEach(b => b.className = b.dataset.k === st.name ? 'pri' : ''); }
   function badge() {
@@ -108,6 +115,6 @@ const Fx = (() => {
     if (st.auto && supported) { try { fd = fd || new FaceDetector({ fastMode: true, maxDetectedFaces: 1 }); } catch (e) { st.auto = false; $$('fxauto').checked = false; return; } if (!tracking) { tracking = true; loop(); } }
   });
   try { const k = localStorage.getItem('catcam-fx'); if (k && E[k]) st.name = k; } catch (e) { }
-  mark(); $$('fxamt').dispatchEvent(new Event('input'));
-  return { st, apply, badge, E };
+  buildGrid(); $$('fxamt').dispatchEvent(new Event('input'));
+  return { st, apply, badge, E, m, sample, rebuild: buildGrid, onReset: f => resetHooks.push(f), onSelect: f => selectHooks.push(f) };
 })();
