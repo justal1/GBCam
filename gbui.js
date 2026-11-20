@@ -21,6 +21,7 @@
     for (const k of ['cam', 'fx', 'pr', 'mk', 'gb']) $('tab' + k).className = t === k ? 'pri' : '';
     $('view').style.touchAction = t === 'fx' ? 'none' : 'pan-y';
     if (window.Fx) Fx.badge();
+    if (t === 'mk') Make.open();
     if (gm && !started) { started = true; boot(); }
     if (gm) ensureAudio(); else { saveSram(); if (ac && ac.state === 'running') ac.suspend(); }
     try { localStorage.setItem('catcam-tab', t); } catch (e) { }

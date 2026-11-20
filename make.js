@@ -43,6 +43,19 @@ const Make = (() => {
     return page(hgt, x => { let px = (W - tot * unit) >> 1, bar = true; for (const m of w) { if (bar) x.fillRect(px, 0, m * unit, hgt); px += m * unit; bar = !bar; } });
   }
 
+  // ---------------- picture -> 384x336 Floyd-Steinberg bits ----------------
+  let pickedBits = null;
+  function ditherBitmap(bmp) {
+    const c = cvs(W, H), x = c.getContext('2d'), k = Math.max(W / bmp.width, H / bmp.height), dw = bmp.width * k, dh = bmp.height * k;
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    const d = x.getImageData(0, 0, W, H).data, g = new Float32Array(W * H), bits = new Uint8Array(W * H);
+    for (let i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    let lo = 255, hi = 0; for (const v of g) { if (v < lo) lo = v; if (v > hi) hi = v; } const sc = hi > lo ? 255 / (hi - lo) : 1; for (let i = 0; i < g.length; i++) g[i] = (g[i] - lo) * sc; // auto-contrast
+    for (let y = 0; y < H; y++) for (let xx = 0; xx < W; xx++) { const i = y * W + xx, o = g[i], n = o < 128 ? 0 : 255, e = o - n; bits[i] = n ? 0 : 1;
+      if (xx + 1 < W) g[i + 1] += e * 7 / 16; if (y + 1 < H) { if (xx > 0) g[i + W - 1] += e * 3 / 16; g[i + W] += e * 5 / 16; if (xx + 1 < W) g[i + W + 1] += e / 16; } }
+    return bits;
+  }
+
   // ---------------- stickers ----------------
   function shapePath(kind, cx, cy, r) {
     const p = new Path2D();
@@ -220,8 +233,15 @@ const Make = (() => {
     sticker: {
       title: '🏷 Photo sticker',
       html: () => `<div class="sub">Turns the photo currently on the Cam screen (or the one you opened from Photos) into a die-cut style sticker with a dashed cut line.</div>`
-        + sel('shape', 'Shape', [['circle', 'Circle'], ['rounded', 'Rounded square'], ['heart', 'Heart'], ['star', 'Star']], 'circle') + field('label', 'Label under it (optional)', 'text', '', 'maxlength="40"'),
-      build(r, v) { if (!lastBits) throw new Error('No photo yet. Open the Cam tab and let the camera start, or open a photo.'); return sticker(v('shape').value, lastBits, v('label').value); },
+        + sel('shape', 'Shape', [['circle', 'Circle'], ['rounded', 'Rounded square'], ['heart', 'Heart'], ['star', 'Star']], 'circle') + field('label', 'Label under it (optional)', 'text', '', 'maxlength="40"')
+        + `<div class="row"><button name="pickimg" type="button">🖼 Use a picture from my phone…</button><button name="clearimg" type="button">Use camera photo</button><input name="imgfile" type="file" accept="image/*" hidden></div><div class="sub" name="imgnote"></div>`,
+      build(r, v) { const src = pickedBits || lastBits; if (!src) throw new Error('No photo yet. Open the Cam tab and let the camera start, or choose a picture.'); return sticker(v('shape').value, src, v('label').value); },
+      init(r) {
+        const f = r.querySelector('[name=imgfile]'), note = r.querySelector('[name=imgnote]');
+        r.querySelector('[name=pickimg]').onclick = () => f.click();
+        r.querySelector('[name=clearimg]').onclick = () => { pickedBits = null; note.textContent = ''; r.dispatchEvent(new Event('input', { bubbles: true })); };
+        f.onchange = async () => { const file = f.files[0]; if (!file) return; try { const bmp = await createImageBitmap(file); pickedBits = ditherBitmap(bmp); note.textContent = 'Using ' + file.name; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that picture', 'bad'); } f.value = ''; };
+      },
     },
     code: {
       title: '🔳 QR / barcode label',
@@ -253,8 +273,8 @@ const Make = (() => {
     day: {
       title: '☀ Day card & fortune',
       html: () => field('note', 'Note for today (optional)', 'text', '', 'maxlength="80"') + chk('fort', 'Add a fortune', true) + chk('wx', 'Add weather (asks for location, sends rounded coordinates to open-meteo.com)', false) + `<div class="row"><button name="fetchwx" type="button">Fetch weather now</button><span class="sub" name="wxout"></span></div>`,
-      async build(r, v) {
-        if (v('wx').checked && !weatherText) { try { await fetchWeather(); r.querySelector('[name=wxout]').textContent = weatherText; } catch (e) { log('weather failed', e.message); } }
+      async build(r, v, o) {
+        if (v('wx').checked && !weatherText && !(o && o.live)) { try { await fetchWeather(); r.querySelector('[name=wxout]').textContent = weatherText; } catch (e) { log('weather failed', e.message); } }
         const d = new Date(), parts = [Prt.blank(6), Prt.textBits(d.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase(), { size: 58 }), Prt.textBits(d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }), { size: 28, bold: false })];
         if (v('wx').checked && weatherText) parts.push(Prt.textBits(weatherText, { size: 28 }));
         if (v('note').value) { parts.push(Prt.solid(3)); parts.push(Prt.textBits(v('note').value, { size: 28 })); }
@@ -280,7 +300,7 @@ const Make = (() => {
         + `<div class="sub">A parchment scroll with rolled ends, for invitations, notes and awards. The same scroll border is in Fun → Frame.</div>`,
       build(r, v) {
         const sz = +v('size').value, m = cvs(W, 10).getContext('2d'); m.font = `600 ${sz}px ${FONT}`;
-        const lines = wrapLines(m, v('msg').value || ' ', W - 100), lh = Math.round(sz * 1.25), top = 50, titleH = v('head').value ? 56 : 0, h = Math.max(220, top + titleH + lines.length * lh + 70);
+        const lines = wrapLines(m, v('msg').value || ' ', W - 100), lh = Math.round(sz * 1.25), top = 66, titleH = v('head').value ? 56 : 0, h = Math.max(250, top + titleH + lines.length * lh + 72);
         const s = page(h, x => {
           x.textAlign = 'center'; let y = top;
           if (v('head').value) { x.font = `800 38px ${FONT}`; x.fillText(v('head').value, W / 2, y); y += 46; x.lineWidth = 2; x.beginPath(); x.moveTo(110, y); x.lineTo(W / 2 - 14, y); x.moveTo(W / 2 + 14, y); x.lineTo(W - 110, y); x.stroke(); x.beginPath(); x.moveTo(W / 2, y - 6); x.lineTo(W / 2 + 6, y); x.lineTo(W / 2, y + 6); x.lineTo(W / 2 - 6, y); x.closePath(); x.fill(); y += 12; }
@@ -321,10 +341,11 @@ const Make = (() => {
         const cv = r.querySelector('[name=pad]'), x = cv.getContext('2d'), lx = pad.layer.getContext('2d'); let down = false, last = null;
         const redraw = () => { x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(padComposite(), 0, 0); };
         const pt = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * W / b.width, (e.clientY - b.top) * H / b.height]; };
-        const seg = (a, b) => { lx.strokeStyle = pad.pen === 'black' ? '#000' : '#fff'; lx.fillStyle = lx.strokeStyle; lx.lineWidth = pad.size; lx.lineCap = lx.lineJoin = 'round'; lx.beginPath(); lx.moveTo(a[0], a[1]); lx.lineTo(b[0], b[1]); lx.stroke(); if (a[0] === b[0] && a[1] === b[1]) { lx.beginPath(); lx.arc(a[0], a[1], pad.size / 2, 0, 7); lx.fill(); } };
-        cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); down = true; pad.undo.push(lx.getImageData(0, 0, W, H)); if (pad.undo.length > 20) pad.undo.shift(); last = pt(e); seg(last, last); redraw(); e.preventDefault(); };
-        cv.onpointermove = e => { if (!down) return; const p = pt(e); seg(last, p); last = p; redraw(); e.preventDefault(); };
-        cv.onpointerup = cv.onpointercancel = () => { down = false; };
+        const style = () => { lx.strokeStyle = lx.fillStyle = pad.pen === 'black' ? '#000' : '#fff'; lx.lineWidth = pad.size; lx.lineCap = lx.lineJoin = 'round'; };
+        const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; let pm = null;
+        cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); down = true; pad.undo.push(lx.getImageData(0, 0, W, H)); if (pad.undo.length > 20) pad.undo.shift(); last = pt(e); pm = last; style(); lx.beginPath(); lx.arc(last[0], last[1], pad.size / 2, 0, 7); lx.fill(); redraw(); e.preventDefault(); };
+        cv.onpointermove = e => { if (!down) return; const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; style(); for (const ev of (evs.length ? evs : [e])) { const p = pt(ev), m = mid(last, p); lx.beginPath(); lx.moveTo(pm[0], pm[1]); lx.quadraticCurveTo(last[0], last[1], m[0], m[1]); lx.stroke(); pm = m; last = p; } redraw(); e.preventDefault(); };
+        cv.onpointerup = cv.onpointercancel = () => { if (down && pm) { style(); lx.beginPath(); lx.moveTo(pm[0], pm[1]); lx.lineTo(last[0], last[1]); lx.stroke(); redraw(); } down = false; };
         const ps = r.querySelector('[name=psize]'); ps.oninput = () => { pad.size = +ps.value; const o = ps.nextElementSibling; if (o) o.textContent = ps.value; }; ps.oninput();
         const setPen = k => { pad.pen = k; r.querySelector('[name=black]').className = k === 'black' ? 'pri' : ''; r.querySelector('[name=white]').className = k === 'white' ? 'pri' : ''; };
         r.querySelector('[name=black]').onclick = () => setPen('black'); r.querySelector('[name=white]').onclick = () => setPen('white');
@@ -339,35 +360,83 @@ const Make = (() => {
   };
 
   // ---------------- UI ----------------
-  const panels = {};
+  const panels = {}, st = { kind: 'strip', res: null, tok: 0, timer: 0, copies: 1 };
+  const NOPERSIST = { code: ['b', 'c'] }; // never store Wi-Fi passwords / contact details
+  const RANDOM = ['maze', 'sudoku', 'words', 'dice', 'day'];
+  const vals = d => { const o = {}; d.querySelectorAll('input,select,textarea').forEach(e => { if (e.name && e.type !== 'file') o[e.name] = e.type === 'checkbox' ? e.checked : e.value; }); return o; };
+  function restore(k, d) { const o = (saved.vals || {})[k]; if (!o) return; d.querySelectorAll('input,select,textarea').forEach(e => { if (!(e.name in o) || e.type === 'file') return; if (e.type === 'checkbox') e.checked = !!o[e.name]; else e.value = o[e.name]; }); }
+  function persist(k, d) { const o = vals(d); for (const n of NOPERSIST[k] || []) delete o[n]; (saved.vals = saved.vals || {})[k] = o; store(); }
+  const gapRow = () => page(26, x => { x.setLineDash([7, 6]); x.lineWidth = 2; x.beginPath(); x.moveTo(8, 13); x.lineTo(W - 8, 13); x.stroke(); x.setLineDash([]); x.font = `700 14px ${FONT}`; x.fillText('✂', 14, 4); });
+
+  const bar = document.createElement('div'); bar.id = 'mkbar';
+  bar.innerHTML = `<div id="mkmeta" class="sub"></div>
+    <div class="row"><div id="mkcopies" role="group" aria-label="Copies"><button id="mkminus" aria-label="Fewer copies">−</button><output id="mkn">1</output><button id="mkplus" aria-label="More copies">+</button></div><button id="mkprint" class="pri">🖨 Print</button></div>
+    <div class="row"><button id="mknew" hidden>🔀 New</button><button id="mkext" hidden>🖨 Answer</button><button id="mksave">💾 PNG</button><button id="mkshare">↗ Share</button><button id="mklast" title="Print the last thing again">↻ Last</button></div>`;
+  const prev = document.createElement('div'); prev.id = 'mkprev'; prev.innerHTML = '<div id="mkpaper"><canvas></canvas></div><div id="mkerr" hidden></div>';
+  const chips = document.createElement('div'); chips.id = 'mkchips';
+  const stage = document.createElement('div'); stage.id = 'mkpanels';
+
+  async function current(live) { // -> result of the current panel (fresh build)
+    const k = st.kind, d = panels[k], v = n => d.querySelector('[name=' + n + ']'); return KINDS[k].build(d, v, { live: !!live });
+  }
+  async function refresh() {
+    const k = st.kind; if (k === 'draw') { prev.hidden = true; $('mkmeta').textContent = ''; setBar(null); return; }
+    prev.hidden = false; const tok = ++st.tok;
+    try {
+      const s = await current(true); if (tok !== st.tok) return;
+      st.res = s; $('mkerr').hidden = true; $('mkpaper').hidden = false;
+      const c = prev.querySelector('canvas'); const b = Prt.bitsCanvas(s.bits); c.width = b.width; c.height = b.height; c.getContext('2d').drawImage(b, 0, 0);
+      setBar(s);
+    } catch (e) { if (tok !== st.tok) return; st.res = null; $('mkpaper').hidden = true; $('mkerr').hidden = false; $('mkerr').textContent = '⚠ ' + e.message; setBar(null); }
+  }
+  function setBar(s) {
+    const k = st.kind; $('mknew').hidden = !RANDOM.includes(k); $('mkext').hidden = !(s && s.extra);
+    const draw = k === 'draw'; $('mkprint').disabled = !draw && !s; $('mksave').disabled = !draw && !s; $('mkshare').disabled = !draw && !s;
+    $('mkmeta').textContent = s ? `${s.h} dots long ≈ ${(s.h / 8 / 10).toFixed(1)} cm of paper${st.copies > 1 ? ' × ' + st.copies : ''}` : '';
+    $('mklast').disabled = !Prt.last;
+  }
+  const later = () => { clearTimeout(st.timer); st.timer = setTimeout(refresh, 260); };
+
+  async function bitsFor(withCopies) {
+    const s = st.kind === 'draw' ? await current() : st.res; if (!s) throw new Error('Nothing to print yet.');
+    if (!withCopies || st.copies < 2) return s.bits;
+    const parts = []; for (let i = 0; i < st.copies; i++) { if (i) parts.push(gapRow()); parts.push(s); } return Prt.stack(parts).bits;
+  }
+  const canvasOf = async () => { const s = st.kind === 'draw' ? await current() : st.res; return Prt.bitsCanvas(s.bits); };
+
   function build() {
     root.innerHTML = '';
-    const head = document.createElement('div'); head.className = 'row';
-    const pick = document.createElement('select'); pick.id = 'mkkind'; pick.style.flex = '1';
-    for (const [k, p] of Object.entries(KINDS)) { const o = document.createElement('option'); o.value = k; o.textContent = p.title; pick.appendChild(o); }
-    head.appendChild(pick); root.appendChild(head);
+    root.append(chips, prev, stage, bar);
     for (const [k, p] of Object.entries(KINDS)) {
-      const d = document.createElement('div'); d.dataset.kind = k; d.hidden = true; d.innerHTML = p.html();
-      const row = document.createElement('div'); row.className = 'row'; row.style.marginTop = '10px';
-      const pv = document.createElement('button'); pv.textContent = ['maze', 'sudoku', 'words', 'dice'].includes(k) ? '🔀 Generate / preview' : 'Preview'; const pr = document.createElement('button'); pr.className = 'pri'; pr.textContent = '🖨 Print';
-      row.append(pv, pr); d.appendChild(row); root.appendChild(d); panels[k] = d;
-      const v = n => d.querySelector('[name=' + n + ']');
+      const sp = p.title.indexOf(' '), b = document.createElement('button'); b.dataset.kind = k; b.innerHTML = `<span>${p.title.slice(0, sp)}</span><small>${p.title.slice(sp + 1)}</small>`; b.onclick = () => show(k); chips.appendChild(b);
+      const d = document.createElement('div'); d.className = 'mkcard'; d.dataset.kind = k; d.hidden = true; d.innerHTML = p.html(); stage.appendChild(d); panels[k] = d;
+      restore(k, d);
       d.querySelectorAll('input[type=range]').forEach(r => { const o = r.nextElementSibling; if (o && o.tagName === 'OUTPUT') { const f = () => o.textContent = r.value; r.addEventListener('input', f); f(); } });
-      const run = async doPrint => {
-        try {
-          const s = await p.build(d, v); if (!s) return;
-          const extra = s.extra ? { text: '🖨 Print answer', fn: () => Prt.printBits(s.extra.bits, k + '-answer') } : null;
-          if (doPrint) await Prt.printBits(s.bits, k); else Prt.previewBits(s.bits, k, extra);
-        } catch (e) { alert(e.message); log('make error', e.message); }
-      };
-      pv.onclick = () => run(false); pr.onclick = () => run(true);
+      d.addEventListener('input', () => { persist(k, d); if (k !== 'draw') later(); }); d.addEventListener('change', () => { persist(k, d); if (k !== 'draw') later(); });
       if (p.init) p.init(d);
     }
-    pick.onchange = () => show(pick.value);
-    let first = 'strip'; try { first = localStorage.getItem('catcam-mk') || 'strip'; } catch (e) { } if (!KINDS[first]) first = 'strip'; pick.value = first; show(first);
+    $('mkminus').onclick = () => { st.copies = Math.max(1, st.copies - 1); $('mkn').textContent = st.copies; setBar(st.res); };
+    $('mkplus').onclick = () => { st.copies = Math.min(8, st.copies + 1); $('mkn').textContent = st.copies; setBar(st.res); };
+    $('mknew').onclick = refresh;
+    $('mkprint').onclick = async () => { try { $('mkprint').disabled = true; const bits = await bitsFor(true); await Prt.printBits(bits, st.kind); } catch (e) { toast(e.message, 'bad'); } finally { $('mkprint').disabled = false; setBar(st.res); } };
+    $('mkext').onclick = async () => { if (st.res && st.res.extra) await Prt.printBits(st.res.extra.bits, st.kind + '-answer'); };
+    $('mksave').onclick = async () => { try { const c = await canvasOf(); const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = `catcam-${st.kind}-${Date.now()}.png`; a.click(); toast('Saved PNG'); } catch (e) { toast(e.message, 'bad'); } };
+    $('mkshare').onclick = async () => {
+      try { const c = await canvasOf(), blob = await new Promise(r => c.toBlob(r, 'image/png')), f = new File([blob], `catcam-${st.kind}.png`, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'CatCam' }); else { $('mksave').click(); } } catch (e) { if (e.name !== 'AbortError') toast(e.message, 'bad'); } };
+    $('mklast').onclick = async () => { if (Prt.last) await Prt.printBits(Prt.last.bits, Prt.last.label); };
+    let first = 'strip'; try { first = localStorage.getItem('catcam-mk') || 'strip'; } catch (e) { } if (!KINDS[first]) first = 'strip'; select(first);
   }
-  function show(k) { for (const [n, d] of Object.entries(panels)) d.hidden = n !== k; try { localStorage.setItem('catcam-mk', k); } catch (e) { } if (k === 'draw' && pad.redraw) pad.redraw(); }
+  function select(k) {
+    st.kind = k; st.res = null; for (const [n, d] of Object.entries(panels)) d.hidden = n !== k;
+    chips.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.kind === k); b.setAttribute('aria-pressed', b.dataset.kind === k); });
+    try { localStorage.setItem('catcam-mk', k); } catch (e) { }
+    if (k === 'draw' && pad.redraw) pad.redraw();
+    const on = chips.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+  function show(k) { select(k); refresh(); }
+  function open() { refresh(); }
 
   build();
-  return { stripFooter, qrCanvas, code128, barcodeBlock, sticker, maze, sudoku, sudokuSolve, wordsearch, show, KINDS, panels, pad, padComposite };
+  return { stripFooter, qrCanvas, code128, barcodeBlock, sticker, maze, sudoku, sudokuSolve, wordsearch, show, open, refresh, KINDS, panels, pad, padComposite };
 })();

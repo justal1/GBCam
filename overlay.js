@@ -24,21 +24,34 @@ const Overlay = (() => {
     polaroid(x, W, H) { x.fillStyle = '#fff'; x.fillRect(0, 0, W, 18); x.fillRect(0, 0, 18, H); x.fillRect(W - 18, 0, 18, H); x.fillRect(0, H - 62, W, 62); x.strokeStyle = '#000'; x.lineWidth = 3; x.strokeRect(1.5, 1.5, W - 3, H - 3); x.strokeRect(18, 18, W - 36, H - 80); },
     gb(x, W, H) { x.fillStyle = '#000'; x.fillRect(0, 0, W, 16); x.fillRect(0, H - 16, W, 16); x.fillRect(0, 0, 16, H); x.fillRect(W - 16, 0, 16, H); x.fillStyle = '#fff'; for (const [a, b] of [[0, 0], [W - 16, 0], [0, H - 16], [W - 16, H - 16]]) x.fillRect(a + 4, b + 4, 8, 8); },
     dots(x, W, H) { x.fillStyle = '#000'; x.fillRect(0, 0, W, 22); x.fillRect(0, H - 22, W, 22); x.fillRect(0, 0, 22, H); x.fillRect(W - 22, 0, 22, H); x.fillStyle = '#fff'; for (let i = 8; i < W; i += 18) { x.beginPath(); x.arc(i, 11, 4, 0, 7); x.arc(i, H - 11, 4, 0, 7); x.fill(); } for (let j = 8; j < H; j += 18) { x.beginPath(); x.arc(11, j, 4, 0, 7); x.arc(W - 11, j, 4, 0, 7); x.fill(); } },
-    scroll(x, W, H) { // parchment scroll: rolled top and bottom with curled ends, wavy paper edges
-      x.fillStyle = '#fff'; x.fillRect(0, 0, W, 30); x.fillRect(0, H - 30, W, 30); x.fillRect(0, 0, 24, H); x.fillRect(W - 24, 0, 24, H);
-      x.strokeStyle = '#000'; x.lineJoin = 'round';
-      const roll = y => {
-        x.lineWidth = 3; x.fillStyle = '#fff'; x.fillRect(22, y, W - 44, 18); x.strokeRect(22, y, W - 44, 18);
-        x.fillStyle = '#000'; x.fillRect(22, y + 12, W - 44, 6); x.fillStyle = '#fff'; x.fillRect(30, y + 14, W - 60, 1.5);
-        x.lineWidth = 1.5; for (let i = 0; i < 2; i++) { x.beginPath(); x.moveTo(30, y + 4 + i * 4); x.lineTo(W - 30, y + 4 + i * 4); x.stroke(); }
-        for (const cx of [22, W - 22]) { x.lineWidth = 3; x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, y + 9, 11, 0, 7); x.fill(); x.stroke(); x.lineWidth = 2; x.beginPath(); x.arc(cx, y + 9, 6, 0, 7); x.stroke(); x.fillStyle = '#000'; x.beginPath(); x.arc(cx, y + 9, 2, 0, 7); x.fill(); }
+    scroll(x, W, H) { // parchment scroll: shaded cylinder rolls with spiral ends, curling wavy paper edges, roll shadows (pre-dithered so it prints crisply)
+      const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+      const dither = (rx, ry, rw, rh, dens) => { x.fillStyle = '#000'; for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) { const d = dens(i / rw, j / rh); if (d > (B[((ry + j) & 3) * 4 + ((rx + i) & 3)] + 0.5) / 16) x.fillRect(rx + i, ry + j, 1, 1); } };
+      const TB = 46, SB = 30, ROLL = 26, TOP = 8; // top/bottom band, side band, roll height, roll top
+      x.fillStyle = '#fff'; x.fillRect(0, 0, W, TB); x.fillRect(0, H - TB, W, TB); x.fillRect(0, 0, SB, H); x.fillRect(W - SB, 0, SB, H);
+      // shadows the rolls cast onto the paper, and soft side shading
+      dither(SB, TB, W - 2 * SB, 14, (u, v) => 0.75 * (1 - v) * (1 - v));
+      dither(SB, H - TB - 14, W - 2 * SB, 14, (u, v) => 0.75 * v * v);
+      dither(SB, TB, 10, H - 2 * TB, (u, v) => 0.5 * (1 - u) * (1 - u));
+      dither(W - SB - 10, TB, 10, H - 2 * TB, (u, v) => 0.5 * u * u);
+      // curling paper edges
+      x.strokeStyle = '#000'; x.lineJoin = x.lineCap = 'round'; x.lineWidth = 3;
+      for (const bx of [SB, W - SB]) { x.beginPath(); for (let y = TOP + ROLL; y <= H - TOP - ROLL; y += 2) { const px = bx + Math.sin((y - TB) / 14) * 2.2 * Math.sin(Math.PI * (y - TB) / (H - 2 * TB)); x[y === TOP + ROLL ? 'moveTo' : 'lineTo'](px, y); } x.stroke(); }
+      const roll = y0 => {
+        // cylinder body, shaded top-light to bottom-dark
+        x.fillStyle = '#fff'; x.fillRect(20, y0, W - 40, ROLL);
+        dither(20, y0, W - 40, ROLL, (u, v) => v < 0.18 ? 0 : 0.1 + 0.8 * Math.pow((v - 0.18) / 0.82, 1.3));
+        x.fillStyle = '#fff'; x.fillRect(26, y0 + 4, W - 52, 2); // specular streak
+        x.lineWidth = 3; x.strokeStyle = '#000'; x.strokeRect(20, y0, W - 40, ROLL);
+        // rolled-paper ends: spiral discs
+        for (const cx of [20, W - 20]) {
+          const cy = y0 + ROLL / 2; x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, cy, 17, 0, 7); x.fill(); x.lineWidth = 3; x.stroke();
+          x.lineWidth = 2; x.beginPath(); for (let t = 0; t < 4.2 * Math.PI; t += 0.2) { const r = 2 + t * 1.15, dir = cx < W / 2 ? 1 : -1; x[t ? 'lineTo' : 'moveTo'](cx + Math.cos(t * dir) * r, cy + Math.sin(t * dir) * r); } x.stroke();
+        }
       };
-      roll(4); roll(H - 22);
-      for (const [bx, dir] of [[14, 1], [W - 14, -1]]) {
-        x.lineWidth = 3; x.beginPath(); for (let y = 26; y <= H - 26; y += 3) { const px = bx + Math.sin(y / 9) * 2.2; x[y === 26 ? 'moveTo' : 'lineTo'](px, y); } x.stroke();
-        x.lineWidth = 1.2; x.beginPath(); x.moveTo(bx + dir * 7, 30); x.lineTo(bx + dir * 7, H - 30); x.stroke();
-      }
-      x.fillStyle = '#000'; for (const [px, py] of [[28, 34], [W - 28, 34], [28, H - 34], [W - 28, H - 34]]) { x.beginPath(); x.moveTo(px, py - 5); x.lineTo(px + 5, py); x.lineTo(px, py + 5); x.lineTo(px - 5, py); x.closePath(); x.fill(); }
+      roll(TOP); roll(H - TOP - ROLL);
+      // corner studs
+      x.fillStyle = '#000'; for (const [px, py] of [[SB + 12, TB + 18], [W - SB - 12, TB + 18], [SB + 12, H - TB - 18], [W - SB - 12, H - TB - 18]]) { x.beginPath(); x.moveTo(px, py - 5); x.lineTo(px + 5, py); x.lineTo(px, py + 5); x.lineTo(px - 5, py); x.closePath(); x.fill(); }
     },
     hearts(x, W, H) { glyphFrame(x, W, H, '♥', '#e0245e'); },
     stars(x, W, H) { glyphFrame(x, W, H, '★', '#f5b800'); },

@@ -1,4 +1,10 @@
 'use strict';
+// Small toast used instead of alert() across the app.
+function toast(msg, kind) {
+  let t = document.getElementById('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
+  t.textContent = msg; t.className = 'show' + (kind ? ' ' + kind : ''); clearTimeout(toast.t); toast.t = setTimeout(() => { t.className = ''; }, kind === 'bad' ? 4500 : 2200);
+}
+if ('serviceWorker' in navigator) { const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) toast('CatCam updated. Reload to use the new version.'); }); }
 // Print helpers: text -> 1-bit rows, label printing, calibration page, shared print/preview plumbing.
 const Prt = (() => {
   const cx = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -68,14 +74,15 @@ const Prt = (() => {
   }
 
   // ---- shared plumbing ----
+  let last = null;
   async function printBits(bits, label) {
     const c = cfg(), pr = $('prog'), bar = pr.firstElementChild; pr.style.display = 'block'; bar.style.width = 0;
     try {
       const job = buildJob(bits, c); log((label || 'print') + ':', job.length, 'packets');
       if (!c.mock && !ble.wc) await bleConnect();
       await (c.mock ? mockSend : bleSend)(job, c, p => bar.style.width = (p * 100) + '%');
-      log((label || 'print') + ' done'); return true;
-    } catch (e) { log('PRINT ERROR', e.message); alert('Print failed: ' + e.message); return false; }
+      log((label || 'print') + ' done'); last = { bits, label }; toast('Printed ✓'); if (navigator.vibrate) navigator.vibrate(25); return true;
+    } catch (e) { log('PRINT ERROR', e.message); last = { bits, label }; toast('Print failed: ' + e.message + '  (↻ Last in Make retries)', 'bad'); return false; }
     finally { setTimeout(() => { pr.style.display = 'none'; bar.style.width = 0; }, 800); }
   }
   // preview modal: show a canvas, with Print / Save / Close (+ optional extra button)
@@ -107,5 +114,5 @@ const Prt = (() => {
     $('modal').addEventListener('click', e => { if (e.target === $('modal')) $('modal').hidden = true; });
   }
   initUI();
-  return { textBits, canvasBits, bitsCanvas, stack, blank, solid, calibration, printBits, preview, previewBits };
+  return { get last() { return last; }, textBits, canvasBits, bitsCanvas, stack, blank, solid, calibration, printBits, preview, previewBits };
 })();
