@@ -23,7 +23,7 @@ const Shots = (() => {
     const parts = [Prt.textBits('PHOTO BOOTH', { size: 30 })];
     for (const g of frames) { parts.push(Prt.solid(5)); parts.push({ bits: process(g, c).bits, h: H }); }
     parts.push(Prt.solid(5));
-    parts.push(Prt.textBits(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }), { size: 20, bold: false }));
+    for (const p of Make.stripFooter()) parts.push(p);
     const s = Prt.stack(parts);
     Prt.previewBits(s.bits, 'strip', { text: '💾 Save frames to album', fn: async () => { for (let i = 0; i < frames.length; i++) await Album.save(frames[i], rgbs[i], true); $('modal').hidden = true; } });
     window.lastStrip = s;

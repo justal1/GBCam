@@ -1,0 +1,41 @@
+<!doctype html><body><pre id=o></pre><iframe id=f src="index.html" width=420 height=900></iframe>
+<script>
+const out=[];const L=(...a)=>{out.push(a.join(' '));document.getElementById('o').textContent=out.join('\n')};
+const f=document.getElementById('f');
+f.onload=async()=>{try{
+ await new Promise(r=>setTimeout(r,1200));
+ const w=f.contentWindow,M=w.eval('Make'),P=w.eval('Prt');
+ // code128 table sanity
+ const bad=[];M.KINDS&&0;
+ const t=M.code128('Hello 123');L('code128 modules',t.length,'sum',t.reduce((a,b)=>a+b,0),'(expect 11*(1+9+1)+13 =',11*11+13+')');
+ // QR
+ const q=M.qrCanvas('https://example.com/hi',300);L('qr modules',q.modules,'h',q.h,'ink',q.bits.reduce((a,b)=>a+b,0));
+ // QR decode check using BarcodeDetector if present
+ if(w.BarcodeDetector){try{const d=await Promise.race([new w.BarcodeDetector({formats:['qr_code']}).detect(q.canvas),new Promise(r=>setTimeout(()=>r([]),1500))]);L('qr decode',d.length?d[0].rawValue:'NONE')}catch(e){L('bd err',e.message)}}else L('no BarcodeDetector');
+ // sudoku
+ const s=M.sudoku(33);const clues=0;L('sudoku h',s.h,'ink',s.bits.reduce((a,b)=>a+b,0),'extra ink',s.extra.bits.reduce((a,b)=>a+b,0));
+ // sudoku validity: solve puzzle count
+ const g=new Array(81).fill(0);const full=M.sudokuSolve(g,1,true).first;L('sudoku full ok',full&&full.every(v=>v>=1&&v<=9));
+ const m=M.maze(14,16,25);L('maze h',m.h,'ink',m.bits.reduce((a,b)=>a+b,0),'sol ink',m.extra.bits.reduce((a,b)=>a+b,0));
+ const ws=M.wordsearch(['CAT','MOON','PIZZA','OWL']);L('ws h',ws.h);
+ // every panel via build
+ for(const k of Object.keys(M.KINDS)){
+   L('panel',k);M.show(k);const d=M.panels[k];const v=n=>d.querySelector('[name='+n+']');
+   try{
+     if(k==='code'){for(const t of ['text','wifi','contact','app','bar']){v('type').value=t;v('a').value='abc';v('b').value='pw';const r=M.KINDS.code.build(d,v);L('code',t,r.h)}}
+     else if(k==='strip'){const r=await M.KINDS.strip.build(d,v);L(k,'ok',r.h)}
+     else{const r=await M.KINDS[k].build(d,v);L(k,'ok',r&&r.h,'ink',r&&r.bits.reduce((a,b)=>a+b,0))}
+   }catch(e){L(k,'ERR',e.message)}
+ }
+ // sticker with synthetic bits
+ const bits=new Uint8Array(384*336);for(let i=0;i<bits.length;i++)bits[i]=((i%384)+(i/384|0))%7<3?1:0;
+ for(const sh of ['circle','rounded','heart','star']){const st=M.sticker(sh,bits,'hi');L('sticker',sh,st.h,st.bits.reduce((a,b)=>a+b,0))}
+ // render a few to canvases for visual check
+ const show=(b,h)=>{const c=P.bitsCanvas(b);document.body.appendChild(c)};
+ const specs=[await M.KINDS.scroll.build(M.panels.scroll,n=>M.panels.scroll.querySelector('[name='+n+']')),M.sticker('star',bits,'x'),M.sudoku(33),M.maze(14,16,25),M.wordsearch(['CAT','MOON','PIZZA','OWL','FOX']),M.KINDS.todo.build(M.panels.todo,n=>M.panels.todo.querySelector('[name='+n+']')),await M.KINDS.day.build(M.panels.day,n=>M.panels.day.querySelector('[name='+n+']')),M.qrCanvas('WIFI:T:WPA;S:home;P:pw;;',260),M.barcodeBlock('CATCAM 42',110)];
+ for(const sp of specs)show(sp.bits,sp.h);
+ // tab switching
+ w.document.getElementById('tabmk').click();L('makeview hidden?',w.document.getElementById('makeview').hidden,'printview hidden?',w.document.getElementById('printview').hidden);
+ L('DONE');
+}catch(e){L('FATAL',e.message,e.stack)}};
+</script></body>

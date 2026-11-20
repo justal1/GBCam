@@ -15,6 +15,7 @@ const Overlay = (() => {
     dots: 'Dotted',
     hearts: 'Hearts',
     stars: 'Stars',
+    scroll: 'Scroll',
   };
   const frameFns = {
     simple(x, W, H) { x.fillStyle = '#000'; x.fillRect(0, 0, W, 10); x.fillRect(0, H - 10, W, 10); x.fillRect(0, 0, 10, H); x.fillRect(W - 10, 0, 10, H); x.strokeStyle = '#fff'; x.lineWidth = 3; x.strokeRect(14, 14, W - 28, H - 28); },
@@ -23,6 +24,22 @@ const Overlay = (() => {
     polaroid(x, W, H) { x.fillStyle = '#fff'; x.fillRect(0, 0, W, 18); x.fillRect(0, 0, 18, H); x.fillRect(W - 18, 0, 18, H); x.fillRect(0, H - 62, W, 62); x.strokeStyle = '#000'; x.lineWidth = 3; x.strokeRect(1.5, 1.5, W - 3, H - 3); x.strokeRect(18, 18, W - 36, H - 80); },
     gb(x, W, H) { x.fillStyle = '#000'; x.fillRect(0, 0, W, 16); x.fillRect(0, H - 16, W, 16); x.fillRect(0, 0, 16, H); x.fillRect(W - 16, 0, 16, H); x.fillStyle = '#fff'; for (const [a, b] of [[0, 0], [W - 16, 0], [0, H - 16], [W - 16, H - 16]]) x.fillRect(a + 4, b + 4, 8, 8); },
     dots(x, W, H) { x.fillStyle = '#000'; x.fillRect(0, 0, W, 22); x.fillRect(0, H - 22, W, 22); x.fillRect(0, 0, 22, H); x.fillRect(W - 22, 0, 22, H); x.fillStyle = '#fff'; for (let i = 8; i < W; i += 18) { x.beginPath(); x.arc(i, 11, 4, 0, 7); x.arc(i, H - 11, 4, 0, 7); x.fill(); } for (let j = 8; j < H; j += 18) { x.beginPath(); x.arc(11, j, 4, 0, 7); x.arc(W - 11, j, 4, 0, 7); x.fill(); } },
+    scroll(x, W, H) { // parchment scroll: rolled top and bottom with curled ends, wavy paper edges
+      x.fillStyle = '#fff'; x.fillRect(0, 0, W, 30); x.fillRect(0, H - 30, W, 30); x.fillRect(0, 0, 24, H); x.fillRect(W - 24, 0, 24, H);
+      x.strokeStyle = '#000'; x.lineJoin = 'round';
+      const roll = y => {
+        x.lineWidth = 3; x.fillStyle = '#fff'; x.fillRect(22, y, W - 44, 18); x.strokeRect(22, y, W - 44, 18);
+        x.fillStyle = '#000'; x.fillRect(22, y + 12, W - 44, 6); x.fillStyle = '#fff'; x.fillRect(30, y + 14, W - 60, 1.5);
+        x.lineWidth = 1.5; for (let i = 0; i < 2; i++) { x.beginPath(); x.moveTo(30, y + 4 + i * 4); x.lineTo(W - 30, y + 4 + i * 4); x.stroke(); }
+        for (const cx of [22, W - 22]) { x.lineWidth = 3; x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, y + 9, 11, 0, 7); x.fill(); x.stroke(); x.lineWidth = 2; x.beginPath(); x.arc(cx, y + 9, 6, 0, 7); x.stroke(); x.fillStyle = '#000'; x.beginPath(); x.arc(cx, y + 9, 2, 0, 7); x.fill(); }
+      };
+      roll(4); roll(H - 22);
+      for (const [bx, dir] of [[14, 1], [W - 14, -1]]) {
+        x.lineWidth = 3; x.beginPath(); for (let y = 26; y <= H - 26; y += 3) { const px = bx + Math.sin(y / 9) * 2.2; x[y === 26 ? 'moveTo' : 'lineTo'](px, y); } x.stroke();
+        x.lineWidth = 1.2; x.beginPath(); x.moveTo(bx + dir * 7, 30); x.lineTo(bx + dir * 7, H - 30); x.stroke();
+      }
+      x.fillStyle = '#000'; for (const [px, py] of [[28, 34], [W - 28, 34], [28, H - 34], [W - 28, H - 34]]) { x.beginPath(); x.moveTo(px, py - 5); x.lineTo(px + 5, py); x.lineTo(px, py + 5); x.lineTo(px - 5, py); x.closePath(); x.fill(); }
+    },
     hearts(x, W, H) { glyphFrame(x, W, H, '♥', '#e0245e'); },
     stars(x, W, H) { glyphFrame(x, W, H, '★', '#f5b800'); },
   };
@@ -118,5 +135,5 @@ const Overlay = (() => {
   const view = $$('view');
   const move = ev => { if (typeof tab === 'undefined' || tab !== 'fx' || st.drag !== 'sticker') return; const s = st.stickers[st.sel]; if (!s) return; const r = view.getBoundingClientRect(); s.x = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); s.y = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height)); s.anchor = 'free'; };
   view.addEventListener('pointerdown', move); view.addEventListener('pointermove', ev => { if (ev.buttons) move(ev); });
-  return { st, apply, add, active };
+  return { st, apply, add, active, frameFns };
 })();

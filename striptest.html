@@ -1,0 +1,8 @@
+<!doctype html><body><pre id=o></pre><iframe id=f src="index.html" width=420 height=900></iframe><script>
+const L=t=>document.getElementById('o').textContent+=t+'\n';const f=document.getElementById('f');
+f.onload=async()=>{try{await new Promise(r=>setTimeout(r,1000));const w=f.contentWindow,M=w.eval('Make'),A=w.eval('Album');
+ const g=new Float32Array(384*336);for(let i=0;i<g.length;i++)g[i]=((i%384)/384);
+ for(let k=0;k<3;k++)await A.save(g,null,true);
+ const d=M.panels.strip,v=n=>d.querySelector('[name='+n+']');v('caption').value='Hello!';v('qr').value='https://example.com';
+ const r=await M.KINDS.strip.build(d,v);L('strip h '+r.h+' ink '+r.bits.reduce((a,b)=>a+b,0));
+ L('footer parts '+M.stripFooter().length);L('DONE')}catch(e){L('FATAL '+e.message)}};</script></body>

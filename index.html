@@ -68,7 +68,7 @@ input[type=text],textarea{font:inherit;color:var(--ink);background:var(--panel);
 </style></head>
 <body>
 <header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v8</small></h1><span id="status">printer: not connected</span></header>
-<nav id="tabs" class="row"><button id="tabcam" class="pri">📷 Cam</button><button id="tabfx">✨ Fun</button><button id="tabpr">🖨 Print</button><button id="tabgb">🎮 GB</button></nav>
+<nav id="tabs" class="row"><button id="tabcam" class="pri">📷 Cam</button><button id="tabfx">✨ Fun</button><button id="tabpr">🖨 Print</button><button id="tabmk">🎲 Make</button><button id="tabgb">🎮 GB</button></nav>
 
 <div id="camview">
 <div id="stage"><canvas id="view" width="384" height="336"></canvas><div id="hint">Starting camera…</div><div id="count" hidden></div></div>
@@ -167,6 +167,7 @@ input[type=text],textarea{font:inherit;color:var(--ink);background:var(--panel);
   <div class="row"><button id="prconnect">Connect printer</button></div>
   <div class="sub">Photo queue: in the Cam tab, open Photos → Select, tick photos and tap 🖨.</div>
 </div>
+<div id="makeview" hidden></div>
 <div id="modal" hidden><div id="modalcard"><div id="modalbody"></div></div></div>
 
 <div id="gbview" hidden>
@@ -372,7 +373,7 @@ function draw(res,c,ctx){
 }
 let lastT=0;
 let tab='cam';
-function frame(t){requestAnimationFrame(frame);if(tab==='gb'||tab==='pr')return;
+function frame(t){requestAnimationFrame(frame);if(tab==='gb'||tab==='pr'||tab==='mk')return;
   if(t-lastT<70)return;lastT=t;
   if(live){const g=grabVideo();if(!g)return;render(g)}
 }
@@ -423,6 +424,8 @@ window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,ge
 <script src="overlay.js?v=8"></script>
 <script src="shots.js?v=8"></script>
 <script src="album.js?v=8"></script>
+<script src="vendor/qrcode.js?v=9"></script>
+<script src="make.js?v=9"></script>
 <script src="gb.js?v=8"></script>
 <script src="gbui.js?v=8"></script>
 </body></html>
