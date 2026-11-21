@@ -51,6 +51,9 @@ input[type=text],textarea{font:inherit;color:var(--ink);background:var(--panel);
 #fxgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 #fxgrid button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px}
 #fxgrid .fxh{grid-column:1/-1;color:var(--dim);font-size:12px;margin:10px 0 0;letter-spacing:.4px;text-transform:uppercase}
+#goo-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+#goo-tools button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px}
+#goo-tools button span{font-size:22px;line-height:1}#goo-tools button small{font-size:10.5px}
 #fxgrid button span{font-size:26px;line-height:1}#fxgrid button small{font-size:11px}
 #view{touch-action:pan-y}
 #gbstage{background:#9bbc0f;border-radius:12px;overflow:hidden;border:2px solid #2f353d;position:relative}
@@ -105,7 +108,7 @@ textarea{resize:vertical}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style></head>
 <body>
-<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v12</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v14</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
 
 <div id="camview">
@@ -252,9 +255,10 @@ textarea{resize:vertical}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div id="log"></div></details>
 
-<script src="gbc.js?v=12"></script>
-<script src="fx.js?v=12"></script>
-<script src="fx2.js?v=12"></script>
+<script src="gbc.js?v=14"></script>
+<script src="fx.js?v=14"></script>
+<script src="fx2.js?v=14"></script>
+<script src="goo.js?v=14"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -447,7 +451,8 @@ $('flip').onclick=()=>{facing=facing==='user'?'environment':'user';startCam()};
 $('connect').onclick=async()=>{try{await bleConnect()}catch(e){if(e.name!=='NotFoundError'){log('connect error',e.message);alert(e.message)}}};
 $('pick').onclick=()=>$('file').click();
 $('file').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const bmp=await createImageBitmap(f);loadBitmap(bmp);ev.target.value=''};
-function loadBitmap(bmp){const s=Math.max(W/bmp.width,H/bmp.height),dw=bmp.width*s,dh=bmp.height*s;wx.drawImage(bmp,(W-dw)/2,(H-dh)/2,dw,dh);
+let lastBmp=null;
+function loadBitmap(bmp){lastBmp=bmp;const s=Math.max(W/bmp.width,H/bmp.height),dw=bmp.width*s,dh=bmp.height*s;wx.drawImage(bmp,(W-dw)/2,(H-dh)/2,dw,dh);
   srcCv=work;Fx.apply(wx);Overlay.apply(wx);const g=toGray(wx.getImageData(0,0,W,H).data);live=false;$('reviewbar').style.display='flex';$('hint').style.display='none';render(g)}
 $('back').onclick=backToCam;
 $('del').onclick=async()=>{if(stillId!=null){await dbDel(stillId)}backToCam()};
@@ -459,12 +464,12 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=12"></script>
-<script src="overlay.js?v=12"></script>
-<script src="shots.js?v=12"></script>
-<script src="album.js?v=12"></script>
-<script src="vendor/qrcode.js?v=12"></script>
-<script src="make.js?v=12"></script>
-<script src="gb.js?v=12"></script>
-<script src="gbui.js?v=12"></script>
+<script src="print.js?v=14"></script>
+<script src="overlay.js?v=14"></script>
+<script src="shots.js?v=14"></script>
+<script src="album.js?v=14"></script>
+<script src="vendor/qrcode.js?v=14"></script>
+<script src="make.js?v=14"></script>
+<script src="gb.js?v=14"></script>
+<script src="gbui.js?v=14"></script>
 </body></html>
