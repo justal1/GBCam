@@ -150,7 +150,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 .zxitem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;padding:8px;background:#1a1d22;border-radius:10px}.zxitem span{flex:1 1 100%;font-weight:600}.zxitem button{padding:7px 10px;font-size:13px}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v40</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v41</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
@@ -268,7 +268,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
   <details><summary>Type in a BASIC listing</summary>
     <textarea id="zxbas" rows="8" placeholder='10 PRINT "HELLO"&#10;20 GO TO 10' style="margin-top:8px;font-family:ui-monospace,monospace"></textarea>
     <div class="row"><input id="zxname" type="text" placeholder="Name" maxlength="10"><button id="zxmake" type="button">Make a tape</button></div>
-    <div class="sub">Paste a listing from a magazine or book: each line starts with its number. Keywords in capitals (PRINT, GO TO, FOR…), variables in lower case or single capitals.</div>
+    <div class="sub">Paste a listing from a magazine or book: each line starts with its number. Keywords in capitals (PRINT, GO TO, FOR…), variables in lower case or single capitals. The original <b>Union Flag</b> program is in Appendix D of the Spectrum manual: <a href="https://worldofspectrum.org/ZXBasicManual/zxmanappd.html" target="_blank" rel="noopener" style="color:var(--acc)">open it on World of Spectrum ↗</a>, copy from “5 REM union flag” to line 690, paste it here, tap “Make a tape”, then LOAD and RUN.</div>
   </details>
 </div>
 <div id="makeview" hidden></div>
@@ -319,10 +319,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=40"></script>
-<script src="fx.js?v=40"></script>
-<script src="fx2.js?v=40"></script>
-<script src="goo.js?v=40"></script>
+<script src="gbc.js?v=41"></script>
+<script src="fx.js?v=41"></script>
+<script src="fx2.js?v=41"></script>
+<script src="goo.js?v=41"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -545,21 +545,21 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=40"></script>
-<script src="overlay.js?v=40"></script>
-<script src="shots.js?v=40"></script>
-<script src="album.js?v=40"></script>
-<script src="ansi.js?v=40"></script>
-<script src="ansidraw.js?v=40"></script>
-<script src="vendor/qrcode.js?v=40"></script>
-<script src="make.js?v=40"></script>
-<script src="gb.js?v=40"></script>
-<script src="gbui.js?v=40"></script>
-<script src="spectrum/z80.js?v=40"></script>
-<script src="spectrum/basic.js?v=40"></script>
-<script src="spectrum/spectrum.js?v=40"></script>
-<script src="spectrum/zxui.js?v=40"></script>
-<script src="kid.js?v=40"></script>
-<script src="swipe.js?v=40"></script>
+<script src="print.js?v=41"></script>
+<script src="overlay.js?v=41"></script>
+<script src="shots.js?v=41"></script>
+<script src="album.js?v=41"></script>
+<script src="ansi.js?v=41"></script>
+<script src="ansidraw.js?v=41"></script>
+<script src="vendor/qrcode.js?v=41"></script>
+<script src="make.js?v=41"></script>
+<script src="gb.js?v=41"></script>
+<script src="gbui.js?v=41"></script>
+<script src="spectrum/z80.js?v=41"></script>
+<script src="spectrum/basic.js?v=41"></script>
+<script src="spectrum/spectrum.js?v=41"></script>
+<script src="spectrum/zxui.js?v=41"></script>
+<script src="kid.js?v=41"></script>
+<script src="swipe.js?v=41"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

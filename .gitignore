@@ -11,3 +11,4 @@ rom/
 *.ANS
 testroms/ans/
 testroms/z80/
+testroms/manual_flag.bas
