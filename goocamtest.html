@@ -1,0 +1,16 @@
+<!doctype html><body><pre id=o style="color:#0f0;font:12px monospace"></pre><iframe id=f src="index.html" width=390 height=800 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document,Fx=w.eval('Fx'),G=Fx.goo;
+ // Surprise me can end up on goo in the Cam tab: force that exact situation
+ d.querySelector('#fxgrid button[data-k=goo]').click();d.getElementById('tabcam').click();await sleep(150);
+ const view=d.getElementById('view'),R=view.getBoundingClientRect();L('tab='+w.eval('tab')+' effect='+Fx.st.name+' touch-action='+view.style.touchAction);
+ const ev=(t,x,y)=>view.dispatchEvent(new w.PointerEvent(t,{clientX:R.left+x/384*R.width,clientY:R.top+y/336*R.height,pointerId:1,buttons:t==='pointerup'?0:1,bubbles:true}));
+ G.tool='smear';ev('pointerdown',150,200);for(let i=1;i<=10;i++)ev('pointermove',150+i*10,200-i*5);ev('pointerup',250,150);
+ L('Cam tab drag changed the field: '+G.fx.some(v=>Math.abs(v)>1));
+ d.getElementById('tabmk').click();await sleep(100);L('touch-action on Make tab: '+view.style.touchAction);d.getElementById('tabcam').click();await sleep(100);L('back on Cam: '+view.style.touchAction);
+ // speed of one goo frame with a big smear active (desktop numbers; a phone is several times slower)
+ for(let k=0;k<30;k++){G.px=100+k*5;G.py=150;G.tool='smear';G.down=true;}G.down=false;
+ const c=d.createElement('canvas');c.width=384;c.height=336;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#888';x.fillRect(0,0,384,336);
+ for(let i=0;i<30;i++){G.fx.fill(6);G.fy.fill(-4)}let t=performance.now();for(let i=0;i<20;i++)Fx.apply(x);L('goo frame full-screen warp: '+((performance.now()-t)/20).toFixed(1)+' ms');
+ G.fx.fill(0);G.fy.fill(0);L('DONE')}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>

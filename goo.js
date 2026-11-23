@@ -88,7 +88,7 @@
   // ---- pointer handling on the viewfinder ----
   const view = document.getElementById('view');
   const pos = ev => { const r = view.getBoundingClientRect(); return [(ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height]; };
-  const isOn = () => typeof tab !== 'undefined' && tab === 'fx' && st.name === 'goo' && !(typeof Overlay !== 'undefined' && Overlay.st.drag === 'sticker');
+  const isOn = () => typeof tab !== 'undefined' && (tab === 'fx' || tab === 'cam') && st.name === 'goo' && !(typeof Overlay !== 'undefined' && Overlay.st.drag === 'sticker');
   const rerender = () => { if (typeof live !== 'undefined' && !live && typeof lastBmp !== 'undefined' && lastBmp) loadBitmap(lastBmp); };
   function tick() { const now = performance.now(), dt = Math.min(0.08, (now - G.lastT) / 1000); G.lastT = now; hold(dt); rerender(); }
   const stop = () => { G.down = false; lastPaint = null; clearInterval(G.timer); G.timer = 0; rerender(); };
@@ -119,7 +119,11 @@
   panel.querySelector('#goo-reset').onclick = () => { snapshot(); G.fx.fill(0); G.fy.fill(0); G.scat.fill(0); G.scatOn = false; px.clearRect(0, 0, W, H); G.hasPaint = false; G.pdirty = true; G.drips = []; G.ripples = []; rerender(); };
   panel.querySelector('#goo-rb').onchange = e => { G.rainbow = e.target.checked; }; panel.querySelector('#goo-col').oninput = e => { G.color = e.target.value; G.rainbow = false; panel.querySelector('#goo-rb').checked = false; }; panel.querySelector('#goo-drip').onchange = e => { G.dripsOn = e.target.checked; };
   panel.querySelector('#goo-undo').onclick = () => { const u = G.undo.pop(); if (u) { restoreSnap(u); rerender(); } };
-  Fx.onSelect(k => { panel.hidden = k !== 'goo'; });
+  // dragging must work from the Cam tab too (Surprise me can land on goo there), so the picture must not scroll the page
+  const syncTouch = () => { if (typeof tab === 'undefined') return; view.style.touchAction = (tab === 'fx' || (tab === 'cam' && st.name === 'goo')) ? 'none' : 'pan-y'; };
+  ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb'].forEach(id => document.getElementById(id).addEventListener('click', () => setTimeout(syncTouch, 0)));
+  Fx.onSelect(k => { panel.hidden = k !== 'goo'; syncTouch(); });
+  syncTouch();
   Fx.rebuild();
   try { const k = localStorage.getItem('catcam-fx'); if (k === 'goo') { st.name = 'goo'; Fx.badge(); panel.hidden = false; document.querySelectorAll('#fxgrid button').forEach(b => b.className = b.dataset.k === 'goo' ? 'pri' : ''); } } catch (e) { }
 })();

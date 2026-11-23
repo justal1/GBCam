@@ -28,7 +28,7 @@ const Kid = (() => {
   $$('tabs').after(bar);
   $$('kidsurprise').onclick = () => {
     const btns = [...document.querySelectorAll('#fxgrid button')].filter(b => SURPRISE.includes(b.dataset.k)); if (!btns.length) return;
-    const b = btns[Math.floor(Math.random() * btns.length)]; b.click(); $$('tabcam').click(); toast('✨ ' + b.querySelector('small').textContent + '!');
+    const b = btns[Math.floor(Math.random() * btns.length)]; b.click(); $$('tabcam').click(); toast('✨ ' + b.querySelector('small').textContent + '!' + (b.dataset.k === 'goo' ? ' Drag on the picture!' : ''));
     if (navigator.vibrate) navigator.vibrate(30);
   };
 
