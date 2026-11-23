@@ -5,3 +5,8 @@ rom/
 *.gbc
 *.sav
 .DS_Store
+
+# local test art (artist-owned, never commit)
+*.ans
+*.ANS
+testroms/ans/

@@ -1,0 +1,11 @@
+<!doctype html><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=420 height=1100 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n'};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document,M=w.eval('Make');
+ d.getElementById('tabmk').click();M.show('ansi');await sleep(1500);
+ const panel=M.panels.ansi,meta=()=>d.getElementById('mkmeta').textContent;L('built-in: '+meta()+' | error='+(d.getElementById('mkerr').hidden?'none':d.getElementById('mkerr').textContent));
+ // load a real file through the file input
+ const bytes=new Uint8Array(await (await fetch('testroms/ans/N-LBWSKI.ANS')).arrayBuffer()),dt=new w.DataTransfer();dt.items.add(new w.File([bytes],'N-LBWSKI.ANS'));const inp=panel.querySelector('[name=file]');inp.files=dt.files;inp.dispatchEvent(new w.Event('change'));await sleep(1800);
+ L('after opening file: '+meta()+' | '+panel.querySelector('[name=fname]').textContent+' | art='+panel.querySelector('[name=art]').value);
+ const sel=panel.querySelector('[name=dir]');sel.value='up';sel.dispatchEvent(new w.Event('input',{bubbles:true}));await sleep(1500);L('upright: '+meta());
+ d.getElementById('mkpaper').scrollIntoView();L('DONE')}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>

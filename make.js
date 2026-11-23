@@ -44,6 +44,7 @@ const Make = (() => {
     return page(hgt, x => { let px = (W - tot * unit) >> 1, bar = true; for (const m of w) { if (bar) x.fillRect(px, 0, m * unit, hgt); px += m * unit; bar = !bar; } });
   }
 
+  let ansiDoc = null;
   // ---------------- picture -> 384x336 Floyd-Steinberg bits ----------------
   let pickedBits = null;
   function ditherBitmap(bmp) {
@@ -503,6 +504,23 @@ const Make = (() => {
       title: '📛 Name badge',
       html: () => field('name', 'Name', 'text', 'ALEX', 'maxlength="16"') + sel('orient', 'Direction', [['side', 'Sideways, turned right 90°: huge and long'], ['sideL', 'Sideways, turned left 90°: huge and long'], ['up', 'Upright: small']], 'side') + sel('style', 'Style', [['band', 'Black band'], ['frame', 'Plain frame'], ['star', 'Stars']], 'band') + field('sub', 'Extra line (optional)', 'text', '', 'maxlength="30" placeholder="e.g. Chief snack officer"'),
       build(r, v) { return v('orient').value === 'up' ? badge(v('name').value || ' ', v('style').value, v('sub').value) : badgeSide(v('name').value || ' ', v('style').value, v('sub').value, v('orient').value === 'sideL'); },
+    },
+    ansi: {
+      title: '💾 ANSI / BBS art',
+      html: () => sel('art', 'Art', [['bbs', 'GB CatCam BBS screen'], ['cat', 'Cat'], ['plasma', 'Plasma'], ['copper', 'Copper bars'], ['file', 'My own .ANS file']], 'bbs')
+        + `<div class="row"><button name="open" type="button">📂 Open an .ANS file…</button><input name="file" type="file" hidden></div><div class="sub" name="fname"></div>`
+        + sel('dir', 'Print as', [['side', 'Sideways, real size (turn the paper to read)'], ['up', 'Upright, shrunk to fit the paper']], 'side') + sel('look', 'Colours', [['screen', 'Screen look (like the monitor, black background)'], ['paper', 'Light paper (negative, uses much less ink)']], 'screen')
+        + `<div class="sub">Sideways prints an 80×24 screen at exactly 1:1 pixels; taller art comes out as several strips to tape together. Find more art at <a href="https://16colo.rs" target="_blank" rel="noopener" style="color:var(--acc)">16colo.rs ↗</a>, download an .ANS file and open it here. Art on that site belongs to its artists, so keep it to personal printing and credit them.</div>`,
+      async build(r, v) {
+        await Ansi.ready(); let doc;
+        if (v('art').value === 'file') { if (!ansiDoc) throw new Error('Tap “Open an .ANS file…” and pick one you downloaded.'); doc = ansiDoc; } else doc = Ansi.ART[v('art').value]();
+        return Ansi.toBits(doc, { dir: v('dir').value, look: v('look').value });
+      },
+      init(r) {
+        const f = r.querySelector('[name=file]'), note = r.querySelector('[name=fname]');
+        r.querySelector('[name=open]').onclick = () => f.click();
+        f.onchange = async () => { const file = f.files[0]; if (!file) return; try { ansiDoc = Ansi.parse(new Uint8Array(await file.arrayBuffer())); note.textContent = `${file.name}: ${ansiDoc.cols}×${ansiDoc.rows}` + (ansiDoc.sauce && ansiDoc.sauce.author ? ` by ${ansiDoc.sauce.author}` : ''); r.querySelector('[name=art]').value = 'file'; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that file', 'bad'); } f.value = ''; };
+      },
     },
     scroll: {
       title: '📜 Scroll message',

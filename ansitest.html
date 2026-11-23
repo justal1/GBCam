@@ -1,0 +1,11 @@
+<!doctype html><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;flex-wrap:wrap;gap:8px;padding:6px"></div><iframe id=f src="index.html" width=10 height=10 style="position:absolute;left:-99px"></iframe><script>
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,A=w.eval('Ansi'),P=w.eval('Prt'),L=t=>document.getElementById('o').textContent+=t+'\n';
+ L('CP437 length '+A.CP437.length+' (expect 256)');await A.ready();
+ // font baseline calibration check: a full block must fill its cell
+ const c=document.createElement('canvas');c.width=8;c.height=16;const x=c.getContext('2d',{willReadFrequently:true});const d1=A.blank(1,1);A.put(d1,0,0,219,15,0);const r1=A.render(d1);const px=r1.getContext('2d').getImageData(0,0,8,16).data;let n=0;for(let i=0;i<px.length;i+=4)if(px[i]>200)n++;L('full block fills '+n+'/128 pixels');
+ const show=(name,doc,opt)=>{const r=A.toBits(doc,opt);L(name+': '+doc.cols+'x'+doc.rows+' -> '+r.h+' dots ('+(r.h/80).toFixed(1)+' cm)');const cv=P.bitsCanvas(r.bits);cv.style.cssText='background:#fff;height:'+Math.min(330,Math.round(r.h*(opt&&opt.dir==='up'?0.9:0.4)))+'px;image-rendering:pixelated';document.getElementById('g').appendChild(cv)};
+ for(const k of Object.keys(A.ART)){const cc=A.render(A.ART[k]());cc.style.cssText='width:320px;border:1px solid #666';document.getElementById('g').appendChild(cc)}
+ 
+ for(const f of ['N-DRWRLD.ANS','N-LBWSKI.ANS']){{const b0=new Uint8Array(await (await fetch('testroms/ans/'+f)).arrayBuffer());const dd=A.parse(b0);const cc=A.render(dd);cc.style.cssText='width:'+cc.width/2+'px;border:1px solid #666';document.getElementById('g').appendChild(cc);const up=A.toBits(dd,{dir:'up',look:'paper'});const uc=P.bitsCanvas(up.bits);uc.style.cssText='background:#fff';document.getElementById('g').appendChild(uc)}const b=new Uint8Array(await (await fetch('testroms/ans/'+f)).arrayBuffer());const doc=A.parse(b);L(f+' sauce='+JSON.stringify(doc.sauce));}
+ L('DONE')}catch(e){document.getElementById('o').textContent+='FATAL '+e.message+'\n'+e.stack}};
+</script></body>
