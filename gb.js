@@ -17,7 +17,7 @@ class GBPrinter {
       case 7: this.chk = b; this.st = 8; break;
       case 8: this.chk |= b << 8; this.st = 9; break;
       case 9: reply = 0x81; this.st = 10; break;
-      case 10: this.exec(now); reply = this.statusByte(now); this.st = 0; break;
+      case 10: reply = this.statusByte(now); this.exec(now); this.st = 0; break; // a real printer answers with its status from before it acts on the command
     }
     return reply;
   }
