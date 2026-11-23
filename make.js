@@ -73,7 +73,9 @@ const Make = (() => {
     const m = cvs(10, 10).getContext('2d');
     const fit = (txt, weight, max, maxW) => { let sz = max; for (; sz > 14; sz -= 2) { m.font = `${weight} ${sz}px ${SERIF}`; if (m.measureText(txt).width <= maxW) break; } return sz; };
     const nm = name.toUpperCase(), nsz = fit(nm, 900, 46, PW - 50), rw = reward || '$5,000', rsz = fit(rw, 900, 78, PW - 50);
-    m.font = `italic 600 22px ${SERIF}`; const cl = wrapLines(m, crime || 'Crimes unknown', PW - 70).slice(0, 4);
+    m.font = `italic 600 22px ${SERIF}`; let cl = wrapLines(m, 'For: ' + (crime || 'Crimes unknown'), PW - 60);
+    cl = cl.flatMap(l => { const out = []; while (m.measureText(l).width > PW - 60 && l.length > 4) { let k = l.length; while (k > 3 && m.measureText(l.slice(0, k)).width > PW - 60) k--; out.push(l.slice(0, k)); l = l.slice(k); } out.push(l); return out; });
+    if (cl.length > 4) { cl = cl.slice(0, 4); let l = cl[3]; while (l.length > 1 && m.measureText(l + '…').width > PW - 60) l = l.slice(0, -1); cl[3] = l + '…'; }
     const top = 14, headH = 92, tagH = 36, photoY = top + headH + tagH + 6, nameY = photoY + ph + 12, rewY = nameY + nsz + 14, amtY = rewY + 26, crimeY = amtY + rsz + 14, H = crimeY + cl.length * 28 + 54;
     const rand = rng(Array.from(name + crime).reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
     return page(H, x => {
@@ -81,12 +83,12 @@ const Make = (() => {
       x.lineWidth = 8; x.strokeRect(5, 5, PW - 10, H - 10); x.lineWidth = 2; x.strokeRect(14, 14, PW - 28, H - 28);
       for (const [cx, cy] of [[26, 26], [PW - 26, 26], [26, H - 26], [PW - 26, H - 26]]) { x.font = `700 16px ${SERIF}`; x.fillText('★', cx, cy + 6); }
       x.fillStyle = '#000'; const hs = fit('WANTED', 900, 88, PW - 100); x.font = `900 ${hs}px ${SERIF}`; x.letterSpacing = '4px'; x.fillText('WANTED', PW / 2 + 2, top + 82); x.letterSpacing = '0px';
-      x.fillRect(px, top + headH + 2, pw, tagH - 4); x.fillStyle = '#fff'; x.font = `800 22px ${SERIF}`; x.letterSpacing = '3px'; x.fillText(tagline, PW / 2 + 1, top + headH + 25); x.letterSpacing = '0px'; x.fillStyle = '#000';
+      x.fillRect(px, top + headH + 2, pw, tagH - 4); x.fillStyle = '#fff'; { const ls = tagline.length > 20 ? 1 : 3; let ts = 22; for (; ts > 10; ts -= 1) { x.font = `800 ${ts}px ${SERIF}`; x.letterSpacing = ls + 'px'; if (x.measureText(tagline).width <= pw - 24) break; } x.fillText(tagline, PW / 2 + ls / 2, top + headH + 18 + ts * 0.35); x.letterSpacing = '0px'; } x.fillStyle = '#000';
       if (src) x.drawImage(Prt.bitsCanvas(src), sx, sy, pw, ph, px, photoY, pw, ph); x.lineWidth = 6; x.strokeRect(px - 3, photoY - 3, pw + 6, ph + 6);
       x.font = `900 ${nsz}px ${SERIF}`; x.fillText(nm, PW / 2, nameY + nsz * 0.85);
       x.font = `800 22px ${SERIF}`; x.letterSpacing = '6px'; x.fillText('REWARD', PW / 2 + 3, rewY + 14); x.letterSpacing = '0px';
       x.font = `900 ${rsz}px ${SERIF}`; x.fillText(rw, PW / 2, amtY + rsz * 0.82);
-      x.font = `italic 600 22px ${SERIF}`; cl.forEach((l, i) => x.fillText(i === 0 ? 'For: ' + l : l, PW / 2, crimeY + 20 + i * 28));
+      x.font = `italic 600 22px ${SERIF}`; cl.forEach((l, i) => x.fillText(l, PW / 2, crimeY + 20 + i * 28));
       x.font = `700 14px ${SERIF}`; x.fillText('★  BY ORDER OF THE SHERIFF  ★', PW / 2, H - 28);
       if (worn) { // speckles and nicks on the paper (not over the photo)
         for (let i = 0; i < 520; i++) { const wx = rand() * PW, wy = rand() * H; if (wx > px - 4 && wx < px + pw + 4 && wy > photoY - 4 && wy < photoY + ph + 4) continue; x.fillStyle = rand() < 0.5 ? '#fff' : '#000'; const r = rand() < 0.9 ? 1 : 2; x.fillRect(wx, wy, r, r); }
@@ -338,7 +340,8 @@ const Make = (() => {
 
   function badgeSide(name, style, sub, left) { // drawn landscape, then turned a quarter so the name runs down the length of the paper
     const Hh = W, colW = 190, pad = 22, subH = sub ? 54 : 0, m = cvs(10, 10).getContext('2d'); m.font = `800 100px ${FONT}`;
-    const w100 = Math.max(1, m.measureText(name).width), fitH = (Hh - 2 * pad - subH - 10) / 0.80, size = Math.max(40, Math.min(300, fitH, 1500 * 100 / w100)), textW = Math.ceil(w100 * size / 100 + size * 0.12);
+    const w100 = Math.max(1, m.measureText(name).width), fitH = (Hh - 2 * pad - subH - 10) / 0.80, size = Math.max(40, Math.min(300, fitH, 1500 * 100 / w100)), textW0 = Math.ceil(w100 * size / 100 + size * 0.12);
+    m.font = `600 30px ${FONT}`; const subW = sub ? Math.ceil(m.measureText(sub).width) + 24 : 0, textW = Math.max(textW0, subW);
     const Lw = colW + pad + textW + pad, c = cvs(Lw, Hh), x = c.getContext('2d');
     x.fillStyle = '#fff'; x.fillRect(0, 0, Lw, Hh); x.fillStyle = '#000'; x.strokeStyle = '#000'; x.lineWidth = 8; x.strokeRect(6, 6, Lw - 12, Hh - 12);
     x.textAlign = 'center'; x.textBaseline = 'middle';
