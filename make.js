@@ -296,6 +296,24 @@ const Make = (() => {
     const flipped = { bits: Prt.canvasBits(c), h: bot.h };
     return Prt.stack([top, gapRow(), flipped, Prt.blank(8)]);
   }
+
+  function badgeSide(name, style, sub, left) { // drawn landscape, then turned a quarter so the name runs down the length of the paper
+    const Hh = W, colW = 190, pad = 22, subH = sub ? 54 : 0, m = cvs(10, 10).getContext('2d'); m.font = `800 100px ${FONT}`;
+    const w100 = Math.max(1, m.measureText(name).width), fitH = (Hh - 2 * pad - subH - 10) / 0.80, size = Math.max(40, Math.min(300, fitH, 1500 * 100 / w100)), textW = Math.ceil(w100 * size / 100 + size * 0.12);
+    const Lw = colW + pad + textW + pad, c = cvs(Lw, Hh), x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, Lw, Hh); x.fillStyle = '#000'; x.strokeStyle = '#000'; x.lineWidth = 8; x.strokeRect(6, 6, Lw - 12, Hh - 12);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    if (style === 'band') { x.fillRect(6, 6, colW, Hh - 12); x.fillStyle = '#fff'; }
+    x.font = `800 46px ${FONT}`; x.fillText('HELLO', colW / 2 + 6, Hh / 2 - 34);
+    x.font = `700 24px ${FONT}`; x.fillText('my name is', colW / 2 + 6, Hh / 2 + 14);
+    if (style === 'star') { x.font = `700 24px ${FONT}`; x.fillText('★ ★ ★', colW / 2 + 6, Hh / 2 + 54); }
+    x.fillStyle = '#000'; if (style !== 'band') { x.lineWidth = 4; x.beginPath(); x.moveTo(colW + 6, 22); x.lineTo(colW + 6, Hh - 22); x.stroke(); }
+    x.textAlign = 'left'; x.font = `800 ${size}px ${FONT}`; x.textBaseline = 'alphabetic';
+    const capH = size * 0.72, top = pad + (Hh - 2 * pad - subH - capH) / 2; x.fillText(name, colW + pad + 6, top + capH);
+    if (sub) { x.font = `600 30px ${FONT}`; x.textAlign = 'center'; x.fillText(sub, colW + pad + 6 + textW / 2, Hh - pad - 14); }
+    const r = cvs(Hh, Lw), rx = r.getContext('2d'); rx.fillStyle = '#fff'; rx.fillRect(0, 0, Hh, Lw); if (left) { rx.translate(0, Lw); rx.rotate(-Math.PI / 2); } else { rx.translate(Hh, 0); rx.rotate(Math.PI / 2); } rx.drawImage(c, 0, 0);
+    return { bits: Prt.canvasBits(r), h: Lw, canvas: r };
+  }
   function badge(name, style, sub) {
     const m = cvs(W, 10).getContext('2d'); let size = 110; for (; size > 30; size -= 4) { m.font = `800 ${size}px ${FONT}`; if (m.measureText(name).width < W - 60) break; }
     const hasSub = !!sub, h = 70 + size + 24 + (hasSub ? 40 : 0) + 24;
@@ -439,8 +457,8 @@ const Make = (() => {
     },
     badge: {
       title: '📛 Name badge',
-      html: () => field('name', 'Name', 'text', 'ALEX', 'maxlength="14"') + sel('style', 'Style', [['band', 'Black band'], ['frame', 'Plain frame'], ['star', 'Stars']], 'band') + field('sub', 'Extra line (optional)', 'text', '', 'maxlength="26" placeholder="e.g. Chief snack officer"'),
-      build(r, v) { return badge(v('name').value || ' ', v('style').value, v('sub').value); },
+      html: () => field('name', 'Name', 'text', 'ALEX', 'maxlength="16"') + sel('orient', 'Direction', [['side', 'Sideways, turned right 90°: huge and long'], ['sideL', 'Sideways, turned left 90°: huge and long'], ['up', 'Upright: small']], 'side') + sel('style', 'Style', [['band', 'Black band'], ['frame', 'Plain frame'], ['star', 'Stars']], 'band') + field('sub', 'Extra line (optional)', 'text', '', 'maxlength="30" placeholder="e.g. Chief snack officer"'),
+      build(r, v) { return v('orient').value === 'up' ? badge(v('name').value || ' ', v('style').value, v('sub').value) : badgeSide(v('name').value || ' ', v('style').value, v('sub').value, v('orient').value === 'sideL'); },
     },
     scroll: {
       title: '📜 Scroll message',
@@ -571,7 +589,7 @@ const Make = (() => {
     $('mksave').onclick = async () => { try { const c = await canvasOf(); const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = `catcam-${st.kind}-${Date.now()}.png`; a.click(); toast('Saved PNG'); } catch (e) { toast(e.message, 'bad'); } };
     $('mkshare').onclick = async () => {
       try { const c = await canvasOf(), blob = await new Promise(r => c.toBlob(r, 'image/png')), f = new File([blob], `catcam-${st.kind}.png`, { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'CatCam' }); else { $('mksave').click(); } } catch (e) { if (e.name !== 'AbortError') toast(e.message, 'bad'); } };
+        if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'GB CatCam' }); else { $('mksave').click(); } } catch (e) { if (e.name !== 'AbortError') toast(e.message, 'bad'); } };
     $('mklast').onclick = async () => { if (Prt.last) await Prt.printBits(Prt.last.bits, Prt.last.label); };
     let first = 'strip'; try { first = localStorage.getItem('catcam-mk') || 'strip'; } catch (e) { } if (!KINDS[first]) first = 'strip'; select(first);
   }

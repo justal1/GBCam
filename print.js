@@ -4,7 +4,7 @@ function toast(msg, kind) {
   let t = document.getElementById('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
   t.textContent = msg; t.className = 'show' + (kind ? ' ' + kind : ''); clearTimeout(toast.t); toast.t = setTimeout(() => { t.className = ''; }, kind === 'bad' ? 4500 : 2200);
 }
-if ('serviceWorker' in navigator) { const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) toast('CatCam updated. Reload to use the new version.'); }); }
+if ('serviceWorker' in navigator) { const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) toast('GB CatCam updated. Reload to use the new version.'); }); }
 // Print helpers: text -> 1-bit rows, label printing, calibration page, shared print/preview plumbing.
 const Prt = (() => {
   const cx = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
