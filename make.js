@@ -7,6 +7,7 @@ const Make = (() => {
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { }
   const store = () => { try { localStorage.setItem(SKEY, JSON.stringify(saved)); } catch (e) { } };
   const rnd = n => Math.floor(Math.random() * n);
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1);[a[i], a[j]] = [a[j], a[i]]; } return a; };
   const cvs = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
   const today = (o) => new Date().toLocaleDateString(undefined, o || { year: 'numeric', month: 'short', day: 'numeric' });
@@ -54,6 +55,44 @@ const Make = (() => {
     for (let y = 0; y < H; y++) for (let xx = 0; xx < W; xx++) { const i = y * W + xx, o = g[i], n = o < 128 ? 0 : 255, e = o - n; bits[i] = n ? 0 : 1;
       if (xx + 1 < W) g[i + 1] += e * 7 / 16; if (y + 1 < H) { if (xx > 0) g[i + W - 1] += e * 3 / 16; g[i + W] += e * 5 / 16; if (xx + 1 < W) g[i + W + 1] += e / 16; } }
     return bits;
+  }
+
+
+  const pickerHtml = `<div class="row"><button name="pickimg" type="button">🖼 Use a picture from my phone…</button><button name="clearimg" type="button">Use camera photo</button><input name="imgfile" type="file" accept="image/*" hidden></div><div class="sub" name="imgnote"></div>`;
+  function pickerInit(r) {
+    const f = r.querySelector('[name=imgfile]'), note = r.querySelector('[name=imgnote]');
+    if (pickedBits && note) note.textContent = 'Using the picture you chose';
+    r.querySelector('[name=pickimg]').onclick = () => f.click();
+    r.querySelector('[name=clearimg]').onclick = () => { pickedBits = null; note.textContent = ''; r.dispatchEvent(new Event('input', { bubbles: true })); };
+    f.onchange = async () => { const file = f.files[0]; if (!file) return; try { const bmp = await createImageBitmap(file); pickedBits = ditherBitmap(bmp); note.textContent = 'Using ' + file.name; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that picture', 'bad'); } f.value = ''; };
+  }
+
+
+  function wantedPoster(src, name, crime, reward, tagline, worn) {
+    const SERIF = 'Georgia, "Times New Roman", serif', PW = W, px = 20, pw = 344, ph = 300, sx = 20, sy = 16;
+    const m = cvs(10, 10).getContext('2d');
+    const fit = (txt, weight, max, maxW) => { let sz = max; for (; sz > 14; sz -= 2) { m.font = `${weight} ${sz}px ${SERIF}`; if (m.measureText(txt).width <= maxW) break; } return sz; };
+    const nm = name.toUpperCase(), nsz = fit(nm, 900, 46, PW - 50), rw = reward || '$5,000', rsz = fit(rw, 900, 78, PW - 50);
+    m.font = `italic 600 22px ${SERIF}`; const cl = wrapLines(m, crime || 'Crimes unknown', PW - 70).slice(0, 4);
+    const top = 14, headH = 92, tagH = 36, photoY = top + headH + tagH + 6, nameY = photoY + ph + 12, rewY = nameY + nsz + 14, amtY = rewY + 26, crimeY = amtY + rsz + 14, H = crimeY + cl.length * 28 + 54;
+    const rand = rng(Array.from(name + crime).reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
+    return page(H, x => {
+      x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+      x.lineWidth = 8; x.strokeRect(5, 5, PW - 10, H - 10); x.lineWidth = 2; x.strokeRect(14, 14, PW - 28, H - 28);
+      for (const [cx, cy] of [[26, 26], [PW - 26, 26], [26, H - 26], [PW - 26, H - 26]]) { x.font = `700 16px ${SERIF}`; x.fillText('★', cx, cy + 6); }
+      x.fillStyle = '#000'; const hs = fit('WANTED', 900, 88, PW - 100); x.font = `900 ${hs}px ${SERIF}`; x.letterSpacing = '4px'; x.fillText('WANTED', PW / 2 + 2, top + 82); x.letterSpacing = '0px';
+      x.fillRect(px, top + headH + 2, pw, tagH - 4); x.fillStyle = '#fff'; x.font = `800 22px ${SERIF}`; x.letterSpacing = '3px'; x.fillText(tagline, PW / 2 + 1, top + headH + 25); x.letterSpacing = '0px'; x.fillStyle = '#000';
+      if (src) x.drawImage(Prt.bitsCanvas(src), sx, sy, pw, ph, px, photoY, pw, ph); x.lineWidth = 6; x.strokeRect(px - 3, photoY - 3, pw + 6, ph + 6);
+      x.font = `900 ${nsz}px ${SERIF}`; x.fillText(nm, PW / 2, nameY + nsz * 0.85);
+      x.font = `800 22px ${SERIF}`; x.letterSpacing = '6px'; x.fillText('REWARD', PW / 2 + 3, rewY + 14); x.letterSpacing = '0px';
+      x.font = `900 ${rsz}px ${SERIF}`; x.fillText(rw, PW / 2, amtY + rsz * 0.82);
+      x.font = `italic 600 22px ${SERIF}`; cl.forEach((l, i) => x.fillText(i === 0 ? 'For: ' + l : l, PW / 2, crimeY + 20 + i * 28));
+      x.font = `700 14px ${SERIF}`; x.fillText('★  BY ORDER OF THE SHERIFF  ★', PW / 2, H - 28);
+      if (worn) { // speckles and nicks on the paper (not over the photo)
+        for (let i = 0; i < 520; i++) { const wx = rand() * PW, wy = rand() * H; if (wx > px - 4 && wx < px + pw + 4 && wy > photoY - 4 && wy < photoY + ph + 4) continue; x.fillStyle = rand() < 0.5 ? '#fff' : '#000'; const r = rand() < 0.9 ? 1 : 2; x.fillRect(wx, wy, r, r); }
+        x.strokeStyle = '#fff'; x.lineWidth = 2; x.setLineDash([10, 6, 3, 8]); x.beginPath(); x.moveTo(0, H * 0.5 + 2); x.lineTo(PW, H * 0.5 - 3); x.stroke(); x.setLineDash([]);
+      }
+    });
   }
 
   // ---------------- stickers ----------------
@@ -365,14 +404,9 @@ const Make = (() => {
       title: '🏷 Photo sticker',
       html: () => `<div class="sub">Turns the photo currently on the Cam screen (or the one you opened from Photos) into a die-cut style sticker with a dashed cut line.</div>`
         + sel('shape', 'Shape', [['circle', 'Circle'], ['rounded', 'Rounded square'], ['heart', 'Heart'], ['star', 'Star']], 'circle') + field('label', 'Label under it (optional)', 'text', '', 'maxlength="40"')
-        + `<div class="row"><button name="pickimg" type="button">🖼 Use a picture from my phone…</button><button name="clearimg" type="button">Use camera photo</button><input name="imgfile" type="file" accept="image/*" hidden></div><div class="sub" name="imgnote"></div>`,
+        + pickerHtml,
       build(r, v) { const src = pickedBits || lastBits; if (!src) throw new Error('No photo yet. Open the Cam tab and let the camera start, or choose a picture.'); return sticker(v('shape').value, src, v('label').value); },
-      init(r) {
-        const f = r.querySelector('[name=imgfile]'), note = r.querySelector('[name=imgnote]');
-        r.querySelector('[name=pickimg]').onclick = () => f.click();
-        r.querySelector('[name=clearimg]').onclick = () => { pickedBits = null; note.textContent = ''; r.dispatchEvent(new Event('input', { bubbles: true })); };
-        f.onchange = async () => { const file = f.files[0]; if (!file) return; try { const bmp = await createImageBitmap(file); pickedBits = ditherBitmap(bmp); note.textContent = 'Using ' + file.name; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that picture', 'bad'); } f.value = ''; };
-      },
+      init(r) { pickerInit(r); },
     },
     scan: {
       title: '🔍 QR scanner',
@@ -393,6 +427,13 @@ const Make = (() => {
       init(r) { scanInit(r); },
       onShow(r) { scanStart(r); },
       onHide() { scanStop(); },
+    },
+    wanted: {
+      title: '🤠 Wanted poster',
+      html: () => `<div class="sub">An old-west poster with the camera photo (or any picture you choose). Take the photo in the Cam tab first.</div>` + field('name', 'Name', 'text', 'BIG ALEX', 'maxlength="22"') + field('crime', 'Wanted for', 'text', 'Stealing the last biscuit', 'maxlength="80"') + field('reward', 'Reward', 'text', '$5,000', 'maxlength="14"')
+        + sel('tag', 'Tagline', [['DEAD OR ALIVE', 'DEAD OR ALIVE'], ['ALIVE AND UNHARMED', 'ALIVE AND UNHARMED'], ['BY ORDER OF MUM', 'BY ORDER OF MUM'], ['VERY DANGEROUS', 'VERY DANGEROUS'], ['LAST SEEN NEAR THE FRIDGE', 'LAST SEEN NEAR THE FRIDGE']], 'DEAD OR ALIVE') + chk('worn', 'Worn old paper', true) + pickerHtml,
+      build(r, v) { const src = pickedBits || lastBits; if (!src) throw new Error('No photo yet. Take one in the Cam tab, or choose a picture.'); return wantedPoster(src, v('name').value || 'UNKNOWN', v('crime').value, v('reward').value, v('tag').value, v('worn').checked); },
+      init(r) { pickerInit(r); },
     },
     code: {
       title: '🔳 QR / barcode label',

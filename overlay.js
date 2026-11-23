@@ -16,6 +16,7 @@ const Overlay = (() => {
     hearts: 'Hearts',
     stars: 'Stars',
     scroll: 'Scroll',
+    wanted: 'Wanted poster',
   };
   const frameFns = {
     simple(x, W, H) { x.fillStyle = '#000'; x.fillRect(0, 0, W, 10); x.fillRect(0, H - 10, W, 10); x.fillRect(0, 0, 10, H); x.fillRect(W - 10, 0, 10, H); x.strokeStyle = '#fff'; x.lineWidth = 3; x.strokeRect(14, 14, W - 28, H - 28); },
@@ -53,6 +54,15 @@ const Overlay = (() => {
       // corner studs
       x.fillStyle = '#000'; for (const [px, py] of [[SB + 12, TB + 18], [W - SB - 12, TB + 18], [SB + 12, H - TB - 18], [W - SB - 12, H - TB - 18]]) { x.beginPath(); x.moveTo(px, py - 5); x.lineTo(px + 5, py); x.lineTo(px, py + 5); x.lineTo(px - 5, py); x.closePath(); x.fill(); }
     },
+    wanted(x, W, H) { // old-west poster: WANTED on top, the caption becomes the name underneath
+      const SERIF = 'Georgia, "Times New Roman", serif', topH = 70, botH = 78, name = (st.caption.trim() || 'OUTLAW').toUpperCase();
+      x.fillStyle = '#fff'; x.fillRect(0, 0, W, topH); x.fillRect(0, H - botH, W, botH); x.fillRect(0, 0, 12, H); x.fillRect(W - 12, 0, 12, H);
+      x.fillStyle = '#000'; x.strokeStyle = '#000'; x.lineWidth = 8; x.strokeRect(4, 4, W - 8, H - 8); x.lineWidth = 2; x.strokeRect(13, 13, W - 26, H - 26); x.lineWidth = 4; x.strokeRect(20, topH, W - 40, H - topH - botH);
+      x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.font = `900 46px ${SERIF}`; x.letterSpacing = '3px'; x.fillText('WANTED', W / 2 + 1, 52); x.letterSpacing = '0px';
+      x.font = `800 14px ${SERIF}`; x.letterSpacing = '2px'; x.fillText('DEAD OR ALIVE', W / 2 + 1, 66); x.letterSpacing = '0px';
+      let sz = 34; for (; sz > 14; sz -= 2) { x.font = `900 ${sz}px ${SERIF}`; if (x.measureText(name).width <= W - 60) break; }
+      x.fillText(name, W / 2, H - botH + 34); x.font = `800 17px ${SERIF}`; x.letterSpacing = '2px'; x.fillText('REWARD $5,000', W / 2 + 1, H - 22); x.letterSpacing = '0px';
+    },
     hearts(x, W, H) { glyphFrame(x, W, H, '♥', '#e0245e'); },
     stars(x, W, H) { glyphFrame(x, W, H, '★', '#f5b800'); },
   };
@@ -64,6 +74,7 @@ const Overlay = (() => {
 
   // ---- caption ----
   function drawCaption(x, W, H) {
+    if (st.frame === 'wanted') return; // the poster frame prints the caption as the name
     const parts = []; if (st.caption.trim()) parts.push(st.caption.trim());
     if (st.date) parts.push(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }));
     if (!parts.length) return;
