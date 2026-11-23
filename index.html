@@ -156,7 +156,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 #mkpartbox{background:var(--panel);border-radius:12px;padding:8px 12px;margin:6px 0}#mkpartbox .ctl{display:flex;align-items:center;gap:10px;margin:4px 0}#mkpartbox .ctl span{flex:0 0 44px}#mkpartbox input[type=range]{flex:1}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v52</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v53</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
@@ -320,6 +320,8 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
     <span>Chunk bytes</span><input id="chunk" type="range" min="20" max="180" step="10" value="20"><output></output>
     <span>Row delay ms</span><input id="delay" type="range" min="0" max="30" step="1" value="4"><output></output>
   </div>
+  <label class="chk"><input type="checkbox" id="blall"> Show all Bluetooth devices when choosing (otherwise only names like your last printer, e.g. “PD…”)</label>
+  <div class="row"><button id="blforget" type="button">Forget remembered printer</button></div>
   <label class="chk"><input type="checkbox" id="msb"> MSB-first bits (try this if the print is mirrored in 8-px stripes)</label>
   <label class="chk"><input type="checkbox" id="textmode"> Text drawing mode (darker, no grey)</label>
   <label class="chk"><input type="checkbox" id="mock"> Mock printer (log packets only)</label>
@@ -333,10 +335,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=52"></script>
-<script src="fx.js?v=52"></script>
-<script src="fx2.js?v=52"></script>
-<script src="goo.js?v=52"></script>
+<script src="gbc.js?v=53"></script>
+<script src="fx.js?v=53"></script>
+<script src="fx2.js?v=53"></script>
+<script src="goo.js?v=53"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -345,7 +347,7 @@ const logEl=$('log');
 function log(...a){const s=a.join(' ');logEl.textContent+=s+'\n';logEl.scrollTop=1e9;console.log('[catcam]',s)}
 
 // ---------- settings ----------
-const ids=['brightness','contrast','sharpen','look','sat','res','levels','cdm','mode','pal','auto','invert','energy','feed','chunk','delay','msb','textmode','mock'];
+const ids=['brightness','contrast','sharpen','look','sat','res','levels','cdm','mode','pal','auto','invert','energy','feed','chunk','delay','msb','blall','textmode','mock'];
 function loadSettings(){try{const s=JSON.parse(localStorage.getItem('catcam')||'{}');for(const k of ids){if(!(k in s))continue;const e=$(k);e.type==='checkbox'?e.checked=s[k]:e.value=s[k]}}catch(e){}}
 function saveSettings(){try{const s={};for(const k of ids){const e=$(k);s[k]=e.type==='checkbox'?e.checked:e.value}localStorage.setItem('catcam',JSON.stringify(s))}catch(e){}}
 function cfg(){const g=k=>{const e=$(k);return e.type==='checkbox'?e.checked:e.value};
@@ -426,12 +428,29 @@ function buildJob(bits,c){
 // ---------- transports ----------
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let ble={dev:null,wc:null,nc:null,paused:false};
+setTimeout(()=>{const f=document.getElementById('blforget');if(f)f.onclick=async()=>{try{const sv=JSON.parse(localStorage.getItem('catcam-printer')||'null');localStorage.removeItem('catcam-printer');if(navigator.bluetooth&&navigator.bluetooth.getDevices&&sv){for(const d of await navigator.bluetooth.getDevices())if(d.id===sv.id&&d.forget)await d.forget()}}catch(e){}toast('Forgotten: you will be asked to choose the printer next time')}},0);
 async function bleConnect(){
   if(!navigator.bluetooth)throw new Error('Web Bluetooth not available (use Chrome on Android, over https)');
-  const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0xAE30,0xAF30,0xFF00,0xFFE0,0x18F0]});
+  const OPT=[0xAE30,0xAF30,0xFF00,0xFFE0,0x18F0];let saved=null;try{saved=JSON.parse(localStorage.getItem('catcam-printer')||'null')}catch(e){}
+  let dev=null,srv=null;
+  // 1. a printer this browser was already allowed to use: reconnect without the chooser
+  if(navigator.bluetooth.getDevices&&!(window.ble&&ble.forceChoose)){
+    try{const list=await navigator.bluetooth.getDevices();
+      const cand=list.find(x=>saved&&x.id===saved.id)||(saved&&list.find(x=>(x.name||'')===saved.name))||null;
+      if(cand){log('trying remembered printer',cand.name||cand.id);setStatus('printer: reconnecting…',false);
+        srv=await Promise.race([cand.gatt.connect(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('not in range')),7000))]);dev=cand}}
+    catch(e){log('remembered printer not available:',e.message);dev=null;srv=null}}
+  // 2. otherwise ask, showing only devices named like the last printer (PD…) unless told to show everything
+  if(!dev){
+    const all=$('blall')&&$('blall').checked,pre=saved&&saved.name?saved.name.replace(/[^A-Za-z]*$/,'').slice(0,2)||saved.name.slice(0,2):'';
+    const opts=(!all&&pre)?{filters:[{namePrefix:pre}],optionalServices:OPT}:{acceptAllDevices:true,optionalServices:OPT};
+    try{dev=await navigator.bluetooth.requestDevice(opts)}
+    catch(e){if(opts.filters&&e.name==='NotFoundError')throw new Error('No printer starting with "'+pre+'" found. Is it switched on? Tick "Show all Bluetooth devices" in Printer settings if it has a different name.');throw e}
+    srv=null}
   log('picked',dev.name||dev.id);
-  dev.addEventListener('gattserverdisconnected',()=>{log('disconnected');ble.wc=null;setStatus('printer: disconnected',false)});
-  const srv=await dev.gatt.connect();let wc=null,nc=null;
+  try{localStorage.setItem('catcam-printer',JSON.stringify({id:dev.id,name:dev.name||''}))}catch(e){}
+  if(!dev._cc){dev._cc=1;dev.addEventListener('gattserverdisconnected',()=>{log('disconnected');ble.wc=null;setStatus('printer: disconnected',false)})}
+  if(!srv)srv=await dev.gatt.connect();let wc=null,nc=null;
   const svcs=await srv.getPrimaryServices();
   for(const s of svcs){const cs=await s.getCharacteristics();
     log('service',s.uuid,cs.map(x=>x.uuid.slice(4,8)+':'+['writeWithoutResponse','write','notify'].filter(p=>x.properties[p]).join('/')).join(' '));
@@ -563,26 +582,26 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=52"></script>
-<script src="overlay.js?v=52"></script>
-<script src="shots.js?v=52"></script>
-<script src="album.js?v=52"></script>
-<script src="printables.js?v=52"></script>
-<script src="logo.js?v=52"></script>
-<script src="origami.js?v=52"></script>
-<script src="ansi.js?v=52"></script>
-<script src="ansidraw.js?v=52"></script>
-<script src="vendor/qrcode.js?v=52"></script>
-<script src="make.js?v=52"></script>
-<script src="gb.js?v=52"></script>
-<script src="gbui.js?v=52"></script>
-<script src="spectrum/z80.js?v=52"></script>
-<script src="spectrum/basic.js?v=52"></script>
-<script src="spectrum/spectrum.js?v=52"></script>
-<script src="spectrum/files.js?v=52"></script>
-<script src="spectrum/zxui.js?v=52"></script>
-<script src="health.js?v=52"></script>
-<script src="kid.js?v=52"></script>
-<script src="swipe.js?v=52"></script>
+<script src="print.js?v=53"></script>
+<script src="overlay.js?v=53"></script>
+<script src="shots.js?v=53"></script>
+<script src="album.js?v=53"></script>
+<script src="printables.js?v=53"></script>
+<script src="logo.js?v=53"></script>
+<script src="origami.js?v=53"></script>
+<script src="ansi.js?v=53"></script>
+<script src="ansidraw.js?v=53"></script>
+<script src="vendor/qrcode.js?v=53"></script>
+<script src="make.js?v=53"></script>
+<script src="gb.js?v=53"></script>
+<script src="gbui.js?v=53"></script>
+<script src="spectrum/z80.js?v=53"></script>
+<script src="spectrum/basic.js?v=53"></script>
+<script src="spectrum/spectrum.js?v=53"></script>
+<script src="spectrum/files.js?v=53"></script>
+<script src="spectrum/zxui.js?v=53"></script>
+<script src="health.js?v=53"></script>
+<script src="kid.js?v=53"></script>
+<script src="swipe.js?v=53"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>
