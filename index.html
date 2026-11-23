@@ -102,7 +102,7 @@ textarea{resize:vertical}
 #mkchips button.on small{color:var(--ink)}
 #mkprev{margin:6px 0 12px}
 #mkpaper{background:#2a2e35;border-radius:12px;padding:14px;max-height:56vh;overflow:auto;display:flex;justify-content:center}
-#mkpaper canvas{width:100%;max-width:384px;height:auto;background:#fff;image-rendering:pixelated;box-shadow:0 6px 18px rgba(0,0,0,.5);
+#mkpaper canvas{flex:none;align-self:flex-start;width:100%;max-width:384px;height:auto;background:#fff;image-rendering:pixelated;box-shadow:0 6px 18px rgba(0,0,0,.5);
   -webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/10px 100%;mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/10px 100%;padding-bottom:0}
 #mkerr{background:#33262a;color:#f1b5b9;border:1px solid #5b2d33;border-radius:12px;padding:14px;font-size:14px}
 .mkcard{background:var(--panel);border-radius:12px;padding:6px 14px 14px;margin:0 0 12px}
@@ -153,7 +153,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 .hpgauge{height:12px;background:#2f353d;border-radius:6px;overflow:hidden;margin:8px 0 4px}.hpgauge i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s}.hpgauge i.warn{background:#f0b429}.hpgauge i.bad{background:var(--bad)}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v49</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v50</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
@@ -329,10 +329,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=49"></script>
-<script src="fx.js?v=49"></script>
-<script src="fx2.js?v=49"></script>
-<script src="goo.js?v=49"></script>
+<script src="gbc.js?v=50"></script>
+<script src="fx.js?v=50"></script>
+<script src="fx2.js?v=50"></script>
+<script src="goo.js?v=50"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -555,26 +555,26 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=49"></script>
-<script src="overlay.js?v=49"></script>
-<script src="shots.js?v=49"></script>
-<script src="album.js?v=49"></script>
-<script src="printables.js?v=49"></script>
-<script src="logo.js?v=49"></script>
-<script src="origami.js?v=49"></script>
-<script src="ansi.js?v=49"></script>
-<script src="ansidraw.js?v=49"></script>
-<script src="vendor/qrcode.js?v=49"></script>
-<script src="make.js?v=49"></script>
-<script src="gb.js?v=49"></script>
-<script src="gbui.js?v=49"></script>
-<script src="spectrum/z80.js?v=49"></script>
-<script src="spectrum/basic.js?v=49"></script>
-<script src="spectrum/spectrum.js?v=49"></script>
-<script src="spectrum/files.js?v=49"></script>
-<script src="spectrum/zxui.js?v=49"></script>
-<script src="health.js?v=49"></script>
-<script src="kid.js?v=49"></script>
-<script src="swipe.js?v=49"></script>
+<script src="print.js?v=50"></script>
+<script src="overlay.js?v=50"></script>
+<script src="shots.js?v=50"></script>
+<script src="album.js?v=50"></script>
+<script src="printables.js?v=50"></script>
+<script src="logo.js?v=50"></script>
+<script src="origami.js?v=50"></script>
+<script src="ansi.js?v=50"></script>
+<script src="ansidraw.js?v=50"></script>
+<script src="vendor/qrcode.js?v=50"></script>
+<script src="make.js?v=50"></script>
+<script src="gb.js?v=50"></script>
+<script src="gbui.js?v=50"></script>
+<script src="spectrum/z80.js?v=50"></script>
+<script src="spectrum/basic.js?v=50"></script>
+<script src="spectrum/spectrum.js?v=50"></script>
+<script src="spectrum/files.js?v=50"></script>
+<script src="spectrum/zxui.js?v=50"></script>
+<script src="health.js?v=50"></script>
+<script src="kid.js?v=50"></script>
+<script src="swipe.js?v=50"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

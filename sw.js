@@ -1,4 +1,4 @@
-const C='catcam-v49';
+const C='catcam-v50';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','manifest.json','icon.svg','gb.js','gbui.js','gbc.js','fx.js','fx2.js','goo.js','kid.js','swipe.js','print.js','overlay.js','shots.js','album.js','make.js','printables.js','health.js','logo.js','origami.js','ansi.js','spectrum/z80.js','spectrum/basic.js','spectrum/spectrum.js','spectrum/files.js','spectrum/zxui.js','spectrum/48.rom','spectrum/flag.bas','spectrum/programs/bigletters.bas','spectrum/programs/circles.bas','spectrum/programs/spiro.bas','spectrum/programs/sketchpad.bas','spectrum/programs/flower.bas','spectrum/programs/sinecos.bas','ansidraw.js','vendor/Web437_IBM_VGA_8x16.woff','vendor/qrcode.js'])).catch(()=>{}))});
 self.addEventListener('activate',e=>e.waitUntil(clients.claim()));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const cl=r.clone();caches.open(C).then(c=>c.put(e.request,cl));return r}).catch(()=>caches.match(e.request)))});
