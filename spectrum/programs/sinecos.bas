@@ -1,0 +1,9 @@
+10 REM SINE AND COSINE (after ZX Printer manual program 7)
+20 CLS
+30 PLOT 0,88: DRAW 255,0
+40 PLOT 0,0: DRAW 0,175
+50 FOR x=0 TO 255
+60 PLOT x,88+80*SIN (x/128*PI)
+70 PLOT x,88+80*COS (x/128*PI)
+80 NEXT x
+90 PRINT AT 21,0;"Type COPY to print this"

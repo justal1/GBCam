@@ -758,6 +758,32 @@ const Make = (() => {
       },
       init(r) { searchInit(r); },
     },
+    turtle: {
+      title: '🐢 Turtle (Logo)',
+      html: () => sel('example', 'Start from an example', [['', 'Choose an example…']].concat(Object.entries(Logo.EXAMPLES).map(([k, v]) => [k, v[0]])), '')
+        + field('code', 'Your Logo program', 'textarea', 'REPEAT 36 [REPEAT 4 [FD 80 RT 90] RT 10]', 'rows="9" spellcheck="false" autocapitalize="off" style="font-family:ui-monospace,Menlo,monospace;font-size:14px"')
+        + sel('page', 'Paper', [['sq', 'Square (384 × 384)'], ['tall', 'Tall (384 × 576)'], ['wide', 'Short (384 × 288)']], 'sq') + chk('fit', 'Scale the drawing to fill the paper', true) + `<div class="ctl"><span>Pen size</span><input name="pen" type="range" min="1" max="6" step="1" value="2"><output></output></div>`
+        + `<div class="sub"><b>Commands:</b> FD n, BK n, RT n, LT n (turn by degrees), PU and PD (pen up/down), HOME, CS, SETXY x y, SETH n, PENSIZE n, CIRCLE r, ARC angle r, LABEL "word. <b>Repeating:</b> REPEAT n [ … ], FOR [i 1 10 1] [ … ]. <b>Thinking:</b> MAKE "x 10, then use :x. IF :x &gt; 5 [ … ], IFELSE c [ … ] [ … ]. Maths: + − * / ( ) SIN COS SQRT RANDOM INT. <b>Your own words:</b> TO SQUARE :s … END, then SQUARE 50. Recursion works, so a procedure can call itself (add IF … [STOP] so it ends).</div>`,
+      build(r, v) {
+        const dims = { sq: [384, 384], tall: [384, 576], wide: [384, 288] }[v('page').value], res = Logo.run(v('code').value, { penSize: +v('pen').value });
+        if (!res.segs.length && !res.labels.length) throw new Error('Nothing drawn yet. Try FD 100 RT 90 …');
+        const c = Logo.draw(res, dims[0], dims[1], v('fit').checked); return { bits: Prt.canvasBits(c), h: dims[1], canvas: c };
+      },
+      init(r) { const ex = r.querySelector('[name=example]'), code = r.querySelector('[name=code]'); ex.addEventListener('change', () => { const e = Logo.EXAMPLES[ex.value]; if (e) { code.value = e[1]; r.dispatchEvent(new Event('input', { bubbles: true })); } }); },
+    },
+    origami: {
+      title: '🦢 Origami',
+      html: () => sel('model', 'What to fold', Object.entries(Origami.MODELS).map(([k, v]) => [k, v[0]]), 'dart')
+        + `<div name="o_stars">${sel('pattern', 'Strip pattern', [['stripes', 'Stripes'], ['dots', 'Dots'], ['hearts', 'Hearts'], ['zigzag', 'Zigzags'], ['plain', 'Plain (write your own)']], 'stripes')}${field('message', 'Message printed on the strips (optional)', 'text', 'MAKE A WISH', 'maxlength="22"')}${sel('length', 'Strip length', [['std', 'Standard (20 cm)'], ['long', 'Long (30 cm, bigger stars)']], 'std')}</div>`
+        + `<div name="o_pin">${sel('ppat', 'Pinwheel pattern', [['stripes', 'Stripes'], ['rings', 'Rings'], ['dots', 'Dots'], ['plain', 'Plain']], 'rings')}</div><div name="o_snake">${sel('spat', 'Snake pattern', [['diamonds', 'Diamonds'], ['bands', 'Bands'], ['dots', 'Dots']], 'diamonds')}</div>`
+        + `<div name="o_snow" class="row"><button name="newflake" type="button">🔀 New snowflake cuts</button></div>`
+        + `<div class="sub">Designed for the 48 mm paper roll: strips for stars and the snake, small squares and rectangles for the rest. Print it, tear it off, cut out along the solid lines and follow the little numbered steps printed underneath. Dashes are valley folds, dash-dot are mountain folds.</div>`,
+      build(r, v) { const m = v('model').value, c = Origami.build(m, { pattern: m === 'stars' ? v('pattern').value : m === 'pinwheel' ? v('ppat').value : v('spat').value, message: v('message').value, length: v('length').value, seed: st.originSeed || 1 }); return { bits: Prt.canvasBits(c), h: c.height, canvas: c }; },
+      init(r) {
+        const q = n => r.querySelector('[name=' + n + ']'), sync = () => { const m = q('model').value; q('o_stars').hidden = m !== 'stars'; q('o_pin').hidden = m !== 'pinwheel'; q('o_snake').hidden = m !== 'snake'; q('o_snow').hidden = m !== 'snowflake'; };
+        q('model').addEventListener('change', sync); sync(); q('newflake').onclick = () => { st.originSeed = 1 + rnd(9999); r.dispatchEvent(new Event('input', { bubbles: true })); };
+      },
+    },
     scroll: {
       title: '📜 Scroll message',
       html: () => field('head', 'Title', 'text', 'HEAR YE!', 'maxlength="30"') + field('msg', 'Message', 'textarea', 'You are hereby invited to tea and cake.', 'rows="4"') + sel('size', 'Text size', [['22', 'Small'], ['28', 'Medium'], ['36', 'Large']], '28')

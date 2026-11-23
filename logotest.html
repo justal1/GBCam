@@ -1,0 +1,9 @@
+<!doctype html><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;gap:8px;flex-wrap:wrap;padding:6px"></div><iframe id=f src="index.html" width=10 height=10 style="position:absolute;left:-99px"></iframe><script>
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,M=w.eval('Make'),P=w.eval('Prt'),LG=w.eval('Logo'),L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+ M.show('turtle');const d=M.panels.turtle,v=n=>d.querySelector('[name='+n+']');
+ for(const k of Object.keys(LG.EXAMPLES)){v('example').value=k;v('example').dispatchEvent(new w.Event('change',{bubbles:true}));const t0=performance.now();try{const r=M.KINDS.turtle.build(d,v);const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:200px';const cell=document.createElement('div');cell.style.cssText='color:#fff;font:11px monospace';cell.appendChild(c);cell.append(LG.EXAMPLES[k][0]);document.getElementById('g').appendChild(cell);L(k+': ok '+(performance.now()-t0).toFixed(0)+'ms ink='+r.bits.reduce((a,b)=>a+b,0))}catch(e){L(k+': ERROR '+e.message)}}
+ // error handling
+ for(const ok of ['FD 10 RT -90 FD 5','FD -50 BK -20','SETXY -40 -8 FD 3-1','FD (3-1) * 20','FD 10 - 4 RT 90 FD 3 -1']){v('code').value=ok;try{const r=M.KINDS.turtle.build(d,v);L('ok: '+ok+' -> '+r.bits.reduce((a,b)=>a+b,0)+' ink')}catch(e){L('FAIL: '+ok+' -> '+e.message)}}
+ for(const bad of ['FD','REPEAT 3 FD 10','FOO 10','FD :x','TO X FD 1','REPEAT 5 [FD 10 RT 72','TO LOOP LOOP END LOOP','FD 10 ]']){v('code').value=bad;try{M.KINDS.turtle.build(d,v);L('"'+bad+'": no error?')}catch(e){L('"'+bad.slice(0,22)+'" -> '+e.message)}}
+ L('DONE')}catch(e){document.getElementById('o').textContent+='FATAL '+e.message+'\n'+e.stack}};
+</script></body>

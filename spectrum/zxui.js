@@ -4,7 +4,7 @@ const ZX = (() => {
   const $$ = id => document.getElementById(id), LIB = 'catcam-zxlib';
   let spec = null, ready = null, running = true, turbo = 1, acc = 0, lastT = 0, started = false, ac = null, node = null, queue = [], muted = true;
   const BW = 32, SW = 256 + 2 * BW, SH = 192 + 2 * BW;
-  let scr, sx, img, lib = [], flagListing = '', autoRun = false, lineBuf = [], lineTimer = 0, lastPage = null;
+  let scr, sx, img, lib = [], listings = {}, autoRun = false, lineBuf = [], lineTimer = 0, lastPage = null;
 
   // ---------- keyboard ----------
   // [main label, keyword (green), symbol-shift legend (red), matrix key]
@@ -68,17 +68,27 @@ const ZX = (() => {
   const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
   function loadLib() { try { lib = JSON.parse(localStorage.getItem(LIB) || '[]'); } catch (e) { lib = []; } }
   function saveLib() { try { localStorage.setItem(LIB, JSON.stringify(lib)); } catch (e) { toast('Could not save (storage full?)', 'bad'); } }
+  // programs that ship with the app (the flag, plus Spectrum versions of the drawing programs in the ZX Printer booklet)
+  const BUILTIN = [
+    { id: 'flag', icon: '🇬🇧', name: 'UK flag (Union Jack), typed-in BASIC', file: 'flag.bas', tap: 'flag' },
+    { id: 'big', icon: '🔠', name: 'Big letters (ZX Printer booklet no. 2, for the Spectrum)', file: 'programs/bigletters.bas', tap: 'bigletters' },
+    { id: 'circles', icon: '⭕', name: 'Circles (booklet no. 3)', file: 'programs/circles.bas', tap: 'circles' },
+    { id: 'spiro', icon: '🌀', name: 'Spirograph (booklet no. 3a)', file: 'programs/spiro.bas', tap: 'spiro' },
+    { id: 'sketch', icon: '✏️', name: 'Sketchpad (booklet no. 5): keys 1 0 2 3 and 5 6 7 8', file: 'programs/sketchpad.bas', tap: 'sketchpad' },
+    { id: 'flower', icon: '🌸', name: 'Flower (booklet no. 6)', file: 'programs/flower.bas', tap: 'flower' },
+    { id: 'sine', icon: '📈', name: 'Sine and cosine graph (booklet no. 7)', file: 'programs/sinecos.bas', tap: 'sinecos' },
+  ];
   const blocksOf = e => ZXBasic.fromTap(unb64(e.tap));
   function addLib(name, blocks) { const e = { id: Date.now() + Math.random().toString(36).slice(2, 6), name, tap: b64(ZXBasic.toTap(blocks)) }; lib.unshift(e); saveLib(); renderLib(); return e; }
   function insert(blocks, label, andRun) { spec.insert(blocks.map(b => b.slice())); autoRun = !!andRun; toast('Tape inserted: ' + label); renderTape(); }
   function renderTape() { const t = $$('zxtape'); t.textContent = spec.tape.blocks.length ? 'On the tape: ' + spec.tape.blocks.map(ZXBasic.describe).join('  →  ') + `  (position ${Math.min(spec.tape.pos, spec.tape.blocks.length)}/${spec.tape.blocks.length})` : 'No tape inserted.'; }
   function renderLib() {
     const box = $$('zxlib'); box.innerHTML = '';
-    const items = [{ id: 'flag', name: 'UK flag (Union Jack) — typed-in BASIC', builtin: true }].concat(lib);
+    const items = BUILTIN.map(b => Object.assign({ builtin: true }, b)).concat(lib);
     for (const e of items) {
-      const d = document.createElement('div'); d.className = 'zxitem'; d.innerHTML = `<span>${e.builtin ? '🇬🇧 ' : '💾 '}${e.name}</span>`;
+      const d = document.createElement('div'); d.className = 'zxitem'; d.innerHTML = `<span>${e.builtin ? e.icon + ' ' : '💾 '}${e.name}</span>`;
       const mk = (txt, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; if (cls) b.className = cls; b.onclick = fn; d.appendChild(b); };
-      const blocks = () => e.builtin ? ZXBasic.programTape('flag', flagListing, -1) : blocksOf(e);
+      const blocks = () => e.builtin ? ZXBasic.programTape(e.tap, listings[e.id] || '10 REM missing', -1) : blocksOf(e);
       mk('▶ Load & run', async () => { insert(blocks(), e.name, true); await typeKeys(LOAD_SEQ); }, 'pri'); mk('Insert', () => insert(blocks(), e.name, false));
       mk('📄 Listing', () => { const b = blocks(), data = b.find(x => x[0] === 0xFF); showListing(e.name, data ? ZXBasic.list(data.slice(1, data.length - 1)) : '(no program in this tape)'); });
       mk('⬇ .TAP', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ZXBasic.toTap(blocks())])); a.download = (e.name.replace(/[^\w\- ]+/g, '').trim().slice(0, 30) || 'program') + '.tap'; a.click(); });
@@ -133,7 +143,7 @@ const ZX = (() => {
     let rom; try { rom = new Uint8Array(await (await fetch('spectrum/48.rom')).arrayBuffer()); if (rom.length !== 16384) throw new Error('bad ROM'); } catch (e) { $$('zxhint').textContent = 'Could not load the Spectrum ROM (' + e.message + ').'; return; }
     origRom = rom; spec = new Spectrum(rom); spec.onPrint = onPrint; spec.onLoad = (blk, ok) => { renderTape(); if (autoRun && blk[0] === 0xFF && ok) { autoRun = false; setTimeout(() => typeKeys(RUN_SEQ), 400); } };
     spec.onSave = (blk, all) => { if (blk[0] === 0xFF && all.length >= 2 && all[all.length - 2][0] === 0) { const h = all[all.length - 2], name = String.fromCharCode(...h.slice(2, 12)).trim() || 'program'; addLib(name + ' (' + new Date().toLocaleDateString() + ')', [h, blk]); spec.recorded = []; toast('Saved “' + name + '” to your programs'); } };
-    try { flagListing = await (await fetch('spectrum/flag.bas')).text(); } catch (e) { flagListing = '10 PRINT "FLAG PROGRAM MISSING"'; }
+    for (const b of BUILTIN) { try { listings[b.id] = await (await fetch('spectrum/' + b.file)).text(); } catch (e) { listings[b.id] = '10 PRINT "PROGRAM MISSING"'; } }
     loadLib(); renderLib(); buildKeys(); $$('zxhint').textContent = '';
     try { const j = JSON.parse(localStorage.getItem(ROMKEY) || 'null'); if (j && j.b64) { const r = unb64(j.b64); if (r.length === 16384) { spec.setRom(r); spec.reset(); romName = j.name; } } } catch (e) { }
     describeRom(); renderTape();
