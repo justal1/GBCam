@@ -108,7 +108,7 @@ textarea{resize:vertical}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style></head>
 <body>
-<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v17</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v19</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
 
 <div id="camview">
@@ -225,6 +225,7 @@ textarea{resize:vertical}
   <label class="chk"><input type="checkbox" id="gbcolour" checked> Colour viewfinder (Game Boy Camera ROM: tints the picture with the real camera colours)</label>
   <div class="ctl"><span>Sensor bright</span><input id="gbgain" type="range" min="0.4" max="3" step="0.05" value="1"><output></output></div>
   <label class="chk"><input type="checkbox" id="gbauto" checked> Auto-send game prints to the cat printer</label>
+  <div class="row"><select id="gbmode"><option value="auto">Colour: Game Boy Color mode when the game supports it</option><option value="dmg">Colour: always original Game Boy mode</option></select></div>
   <div class="row"><select id="gbpal"><option value="bw">Grey screen</option>
     <option value="gb">Game Boy green</option>
     <option value="sunset">Sunset</option>
@@ -233,7 +234,7 @@ textarea{resize:vertical}
     <option value="mint">Mint</option>
     <option value="sepia">Sepia</option></select></div>
   <div id="gbprint" hidden><canvas id="gbpage" width="160" height="144"></canvas><div class="row"><button id="gbsend" class="pri">Send to cat printer</button><button id="gbpng">Save PNG</button><button id="gbclose">Dismiss</button></div></div>
-  <div class="sub">ROMs and saves stay in this browser only. Plain, MBC1, MBC3, MBC5 and Game Boy Camera cartridges are supported (mono Game Boy games; no Game Boy Color-only games). Printing from any game that supports the Game Boy Printer comes out on the cat printer. In the Camera game: VIEW → photo → A → print.</div>
+  <div class="sub">ROMs and saves stay in this browser only. Supported cartridges: plain, MBC1, MBC2, MBC3 (with real-time clock), MBC5 (with rumble, which vibrates your phone), HuC1, HuC3 (clock is a stub) and Game Boy Camera. Game Boy Color games run in full colour, including Color-only games. Printing from any game that supports the Game Boy Printer comes out on the cat printer. In the Camera game: VIEW → photo → A → print.</div>
 </div>
 <details><summary>Printer settings</summary>
   <div class="ctl" style="margin-top:10px">
@@ -255,10 +256,10 @@ textarea{resize:vertical}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=17"></script>
-<script src="fx.js?v=17"></script>
-<script src="fx2.js?v=17"></script>
-<script src="goo.js?v=17"></script>
+<script src="gbc.js?v=19"></script>
+<script src="fx.js?v=19"></script>
+<script src="fx2.js?v=19"></script>
+<script src="goo.js?v=19"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -481,12 +482,12 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=17"></script>
-<script src="overlay.js?v=17"></script>
-<script src="shots.js?v=17"></script>
-<script src="album.js?v=17"></script>
-<script src="vendor/qrcode.js?v=17"></script>
-<script src="make.js?v=17"></script>
-<script src="gb.js?v=17"></script>
-<script src="gbui.js?v=17"></script>
+<script src="print.js?v=19"></script>
+<script src="overlay.js?v=19"></script>
+<script src="shots.js?v=19"></script>
+<script src="album.js?v=19"></script>
+<script src="vendor/qrcode.js?v=19"></script>
+<script src="make.js?v=19"></script>
+<script src="gb.js?v=19"></script>
+<script src="gbui.js?v=19"></script>
 </body></html>

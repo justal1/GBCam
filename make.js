@@ -195,6 +195,73 @@ const Make = (() => {
     x.drawImage(pad.layer, 0, 0); return c;
   }
 
+
+  // ---------------- QR scanner (Game Boy style viewfinder) ----------------
+  const scan = { text: null, running: false, raf: 0, last: 0, det: null, mode: null, frozen: false, root: null, jsq: null };
+  const GB = [[155, 188, 15], [139, 172, 15], [48, 98, 48], [15, 56, 15]];
+  const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const beep = () => { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.type = 'square'; o.frequency.value = 1320; g.gain.value = 0.06; o.connect(g); g.connect(a.destination); o.start(); setTimeout(() => { o.stop(); a.close(); }, 90); } catch (e) { } };
+  async function pickDetector() {
+    if (scan.mode) return;
+    try { if ('BarcodeDetector' in window) { const f = await BarcodeDetector.getSupportedFormats(); if (f.includes('qr_code')) { scan.det = new BarcodeDetector({ formats: f.filter(x => ['qr_code', 'code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'data_matrix', 'itf'].includes(x)) }); scan.mode = 'native'; return; } } } catch (e) { }
+    await loadJsQR();
+  }
+  async function loadJsQR() {
+    if (!window.jsQR) await new Promise((res, rej) => { const t = document.createElement('script'); t.src = 'vendor/jsQR.js'; t.onload = res; t.onerror = () => rej(new Error('QR decoder failed to load')); document.head.appendChild(t); });
+    scan.jsq = window.jsQR; scan.mode = 'js';
+  }
+  function scanInit(r) {
+    const q = n => r.querySelector('[name=' + n + ']');
+    q('flip').onclick = () => { $('flip').click(); q('stat').textContent = 'Switching camera…'; };
+    q('again').onclick = () => { scan.frozen = false; q('found').hidden = true; q('stat').textContent = 'Point at a QR code'; scanStart(r); };
+    q('copy').onclick = async () => { try { await navigator.clipboard.writeText(scan.text || ''); toast('Copied'); } catch (e) { toast('Could not copy', 'bad'); } };
+    q('open').onclick = () => { if (/^https?:\/\//i.test(scan.text || '')) window.open(scan.text, '_blank', 'noopener'); };
+    q('clrhist').onclick = () => { saved.scans = []; store(); renderHist(r); };
+    renderHist(r);
+  }
+  function renderHist(r) {
+    const h = r.querySelector('[name=hist]'), box = r.querySelector('[name=histbox]'), list = saved.scans || []; h.innerHTML = ''; box.hidden = !list.length;
+    for (const t of list) { const b = document.createElement('button'); b.type = 'button'; b.textContent = t.length > 38 ? t.slice(0, 36) + '…' : t; b.style.cssText = 'display:block;width:100%;text-align:left;margin:4px 0'; b.onclick = () => { scan.text = t; showFound(r, t, false); }; h.appendChild(b); }
+  }
+  function showFound(r, text, fresh) {
+    scan.text = text; scan.frozen = true; const q = n => r.querySelector('[name=' + n + ']');
+    q('found').hidden = false; q('res').value = text; q('open').hidden = !/^https?:\/\//i.test(text); q('stat').textContent = fresh ? 'Got it! Printing preview below.' : 'Loaded from history.';
+    if (fresh) { beep(); if (navigator.vibrate) navigator.vibrate(60); saved.scans = [text, ...(saved.scans || []).filter(x => x !== text)].slice(0, 8); store(); renderHist(r); }
+    refresh();
+  }
+  async function scanStart(r) {
+    scan.root = r; if (scan.running) return; scan.running = true;
+    const q = n => r.querySelector('[name=' + n + ']'), cv = q('gbv'), cx = cv.getContext('2d'), small = document.createElement('canvas'), sx = small.getContext('2d', { willReadFrequently: true }), dec = document.createElement('canvas'), dx = dec.getContext('2d', { willReadFrequently: true });
+    small.width = 160; small.height = 144; const img = cx.createImageData(160, 144);
+    try { await pickDetector(); } catch (e) { q('stat').textContent = e.message; scan.running = false; return; }
+    if (!scan.frozen) q('stat').textContent = 'Point at a QR code';
+    let busy = false;
+    const loop = async t => {
+      if (!scan.running) return; scan.raf = requestAnimationFrame(loop);
+      if (t - scan.last < 110 || busy) return; scan.last = t;
+      if (typeof tab !== 'undefined' && tab !== 'mk') { scanStop(); return; }
+      const vw = video.videoWidth, vh = video.videoHeight; if (!vw) { q('stat').textContent = 'No camera image yet. Allow camera access.'; return; }
+      if (scan.frozen) return;
+      // Game Boy style viewfinder: 160x144, 4 greens, Bayer dither, shown 2x
+      const k = Math.max(160 / vw, 144 / vh), dw = vw * k, dh = vh * k; sx.save(); if (typeof facing !== 'undefined' && facing === 'user') { sx.translate(160, 0); sx.scale(-1, 1); } sx.drawImage(video, (160 - dw) / 2, (144 - dh) / 2, dw, dh); sx.restore();
+      const d = sx.getImageData(0, 0, 160, 144).data;
+      for (let y = 0; y < 144; y++) for (let x = 0; x < 160; x++) { const i = y * 160 + x, g = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255, lvl = Math.max(0, Math.min(3, Math.floor(g * 3 + (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - 0.5) + 0.5))), c = GB[3 - lvl]; img.data[i * 4] = c[0]; img.data[i * 4 + 1] = c[1]; img.data[i * 4 + 2] = c[2]; img.data[i * 4 + 3] = 255; }
+      sx.putImageData(img, 0, 0); cx.imageSmoothingEnabled = false; cx.drawImage(small, 0, 0, 320, 288);
+      cx.strokeStyle = '#0f380f'; cx.lineWidth = 4; for (const [ax, ay, bx, by] of [[30, 30, 1, 1], [290, 30, -1, 1], [30, 258, 1, -1], [290, 258, -1, -1]]) { cx.beginPath(); cx.moveTo(ax + bx * 40, ay); cx.lineTo(ax, ay); cx.lineTo(ax, ay + by * 40); cx.stroke(); }
+      // decode from the full-resolution video frame
+      busy = true;
+      try {
+        const sc = Math.min(1, 640 / Math.max(vw, vh)); dec.width = Math.round(vw * sc); dec.height = Math.round(vh * sc); dx.drawImage(video, 0, 0, dec.width, dec.height);
+        let text = null;
+        if (scan.mode === 'native') { const res = await Promise.race([scan.det.detect(dec), new Promise(r => setTimeout(() => r(null), 900))]); if (res === null) { scan.mode = null; scan.det = null; await loadJsQR(); } else if (res.length) text = res[0].rawValue; }
+        else { const id = dx.getImageData(0, 0, dec.width, dec.height), res = scan.jsq(id.data, id.width, id.height, { inversionAttempts: 'dontInvert' }); if (res) text = res.data; }
+        if (text && !scan.frozen) showFound(r, text, true);
+      } catch (e) { } finally { busy = false; }
+    };
+    scan.raf = requestAnimationFrame(loop);
+  }
+  function scanStop() { scan.running = false; cancelAnimationFrame(scan.raf); }
+
   // ---------------- strip footer (also used by Shots.strip) ----------------
   function stripFooter() {
     const f = saved.footer || { date: true, caption: '', qr: '' }, parts = [];
@@ -242,6 +309,26 @@ const Make = (() => {
         r.querySelector('[name=clearimg]').onclick = () => { pickedBits = null; note.textContent = ''; r.dispatchEvent(new Event('input', { bubbles: true })); };
         f.onchange = async () => { const file = f.files[0]; if (!file) return; try { const bmp = await createImageBitmap(file); pickedBits = ditherBitmap(bmp); note.textContent = 'Using ' + file.name; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that picture', 'bad'); } f.value = ''; };
       },
+    },
+    scan: {
+      title: '🔍 QR scanner',
+      html: () => `<canvas name="gbv" width="320" height="288" style="width:100%;max-width:320px;display:block;margin:6px auto;border-radius:10px;border:3px solid #0f380f;background:#9bbc0f;image-rendering:pixelated"></canvas>
+        <div class="sub" name="stat" style="text-align:center">Starting camera…</div>
+        <div class="row"><button name="flip" type="button">⟲ Flip camera</button><button name="again" type="button">Scan again</button></div>
+        <div name="found" hidden><label class="sub" style="display:block;margin-top:8px">Found</label><textarea name="res" rows="3" readonly></textarea>
+        <div class="row"><button name="copy" type="button">Copy</button><button name="open" type="button" hidden>Open link</button></div></div>
+        ${chk('cap', 'Print the text under the QR', true)}<div class="ctl"><span>Size</span><input name="size" type="range" min="180" max="380" step="10" value="300"><output></output></div>
+        <div name="histbox" hidden><label class="sub" style="display:block;margin-top:8px">Recent scans (tap to reprint)</label><div name="hist"></div><div class="row"><button name="clrhist" type="button">Clear history</button></div></div>
+        <div class="sub">Reads QR codes and most barcodes with the camera, then lets you print a fresh QR label of whatever it found. Nothing leaves your phone.</div>`,
+      build(r, v) {
+        if (!scan.text) throw new Error('Scan a QR code first: point the camera at one.');
+        const parts = [qrCanvas(scan.text, +v('size').value)];
+        if (v('cap').checked) parts.push(Prt.textBits(scan.text.length > 80 ? scan.text.slice(0, 77) + '…' : scan.text, { size: 20, bold: false }));
+        parts.push(Prt.blank(6)); return Prt.stack(parts);
+      },
+      init(r) { scanInit(r); },
+      onShow(r) { scanStart(r); },
+      onHide() { scanStop(); },
     },
     code: {
       title: '🔳 QR / barcode label',
@@ -428,15 +515,17 @@ const Make = (() => {
     let first = 'strip'; try { first = localStorage.getItem('catcam-mk') || 'strip'; } catch (e) { } if (!KINDS[first]) first = 'strip'; select(first);
   }
   function select(k) {
+    const prevK = st.kind; if (prevK !== k && KINDS[prevK] && KINDS[prevK].onHide) KINDS[prevK].onHide(panels[prevK]);
     st.kind = k; st.res = null; for (const [n, d] of Object.entries(panels)) d.hidden = n !== k;
     chips.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.kind === k); b.setAttribute('aria-pressed', b.dataset.kind === k); });
     try { localStorage.setItem('catcam-mk', k); } catch (e) { }
     if (k === 'draw' && pad.redraw) pad.redraw();
+    if (KINDS[k].onShow) KINDS[k].onShow(panels[k]);
     const on = chips.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
   function show(k) { select(k); refresh(); }
-  function open() { refresh(); }
+  function open() { if (KINDS[st.kind] && KINDS[st.kind].onShow) KINDS[st.kind].onShow(panels[st.kind]); refresh(); }
 
   build();
-  return { stripFooter, qrCanvas, code128, barcodeBlock, sticker, maze, sudoku, sudokuSolve, wordsearch, show, open, refresh, KINDS, panels, pad, padComposite };
+  return { scan, stripFooter, qrCanvas, code128, barcodeBlock, sticker, maze, sudoku, sudokuSolve, wordsearch, show, open, refresh, KINDS, panels, pad, padComposite };
 })();

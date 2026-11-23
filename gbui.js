@@ -52,10 +52,10 @@
   let games = [];
   const titleOf = b => { let t = ''; for (let i = 0x134; i < 0x143; i++) { const c = b[i]; if (c >= 32 && c < 127) t += String.fromCharCode(c); else if (c === 0) break; } return t.trim() || 'Untitled'; };
   const idOf = b => titleOf(b).replace(/[^A-Za-z0-9]/g, '') + '-' + ((b[0x14E] << 8) | b[0x14F]).toString(16) + '-' + (b.length >> 10);
-  const SUPPORTED = new Set([0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0xFC]);
+  const SUPPORTED = new Set([0x00, 0x01, 0x02, 0x03, 0x05, 0x06, 0x08, 0x09, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0xFC, 0xFE, 0xFF]);
   function validRom(b) {
     if (b.length < 0x8000) return 'file too small to be a Game Boy ROM';
-    if (!SUPPORTED.has(b[0x147])) return 'cartridge type 0x' + b[0x147].toString(16) + ' is not supported yet (supported: plain, MBC1, MBC3, MBC5, Game Boy Camera)';
+    if (!SUPPORTED.has(b[0x147])) return 'cartridge type 0x' + b[0x147].toString(16) + ' is not supported yet (supported: plain, MBC1, MBC2, MBC3 with clock, MBC5 with rumble, HuC1, HuC3 (clock is a stub), Game Boy Camera)';
     return null;
   }
   async function loadGames() {
@@ -81,13 +81,12 @@
   }
   async function startBytes(bytes, store) {
     const err = validRom(bytes); if (err) { alert(err); log('ROM rejected:', err); return false; }
-    if (bytes[0x143] === 0xC0 && !confirm('This is a Game Boy Color-only game. This emulator is Game Boy (mono) only, so it will probably not run properly. Add it anyway?')) return false;
-    const id = idOf(bytes), g = new GameBoy(bytes); gameId = id; gb = g; $('gbhint').hidden = true;
-    const sram = await kvGet('sram:' + id); if (sram && sram.byteLength === g.sram.length) g.sram.set(new Uint8Array(sram));
+    const id = idOf(bytes), g = new GameBoy(bytes, { mode: $('gbmode').value }); gameId = id; gb = g; g.onRumble = rumble; $('gbhint').hidden = true;
+    const sram = await kvGet('sram:' + id); if (sram && sram.byteLength === g.sram.length) g.sram.set(new Uint8Array(sram)); g.loadRtc();
     g.cameraSource = () => sensorImg; g.cameraColour = () => sensorRGB; g.sensorGain = +$('gbgain').value; g.printer.onPage = onPage;
     if (store) { await kvPut('rom:' + id, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)); if (!games.find(x => x.id === id)) { games.push({ id, title: titleOf(bytes), size: bytes.length }); await kvPut('games', games); } }
     await kvPut('last', id); refreshGames(); place = null; if (tab === 'gb') ensureAudio();
-    log('Game Boy started:', titleOf(bytes), (bytes.length >> 10) + 'KB,', g.mbc, 'mapper, save', sram ? 'restored' : 'new');
+    log('Game Boy started:', titleOf(bytes), (bytes.length >> 10) + 'KB,', g.mbc, 'mapper,', g.cgb ? 'Game Boy Color mode,' : 'original Game Boy mode,', 'save', sram ? 'restored' : 'new');
     return true;
   }
   const start = bytes => startBytes(bytes, true);
@@ -118,7 +117,7 @@
   $('gbsavefile').onchange = async ev => {
     const f = ev.target.files[0]; ev.target.value = ''; if (!f || !gb) return;
     const b = new Uint8Array(await f.arrayBuffer()); if (!confirm('Replace this game\'s save with ' + f.name + ' (' + b.length + ' bytes)?')) return;
-    gb.sram.fill(0); gb.sram.set(b.subarray(0, gb.sram.length)); gb.sramDirty = true; await saveSram(); gb.reset(); log('save imported:', f.name);
+    gb.sram.fill(0); gb.sram.set(b.subarray(0, gb.sram.length)); gb.sramDirty = true; await saveSram(); gb.reset(); gb.loadRtc(); log('save imported:', f.name);
   };
   async function saveSram() { if (gb && gameId && gb.sramDirty) { gb.sramDirty = false; await kvPut('sram:' + gameId, gb.sram.slice().buffer); } }
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveSram(); });
@@ -170,7 +169,10 @@
   }
 
   // ---- main loop ----
+  let rumbleTimer = 0;
+  function rumble(on) { clearInterval(rumbleTimer); rumbleTimer = 0; if (on && navigator.vibrate) { navigator.vibrate(60); rumbleTimer = setInterval(() => navigator.vibrate(60), 90); } }
   function drawFrame() {
+    if (gb.cgb) { new Uint32Array(imgd.data.buffer).set(gb.fbc); sx.putImageData(imgd, 0, 0); return; }
     const p = palOf($('gbpal').value), d = imgd.data, fb = gb.fb;
     for (let i = 0; i < 160 * 144; i++) { const c = p[fb[i]], o = i * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; }
     if (gb.mbc === 'cam' && $('gbcolour').checked) colourise(d);

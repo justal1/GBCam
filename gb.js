@@ -128,13 +128,18 @@ class APU {
 }
 
 class GameBoy {
-  constructor(rom) {
-    this.rom = rom; this.romBanks = Math.max(2, rom.length >> 14);
+  constructor(rom, opts) {
+    opts = opts || {}; this.rom = rom; this.romBanks = Math.max(2, rom.length >> 14);
     this.cart = rom[0x147];
-    const t = this.cart; this.mbc = t === 0xFC ? 'cam' : (t >= 1 && t <= 3) ? 'mbc1' : (t >= 0x0F && t <= 0x13) ? 'mbc3' : (t >= 0x19 && t <= 0x1E) ? 'mbc5' : 'none';
-    this.ramBytes = [0, 0x800, 0x2000, 0x8000, 0x20000, 0x10000][rom[0x149]] || 0; if (this.mbc === 'cam') this.ramBytes = 0x20000; this.ramMask = this.ramBytes ? this.ramBytes - 1 : 0;
+    const t = this.cart;
+    this.mbc = t === 0xFC ? 'cam' : (t >= 1 && t <= 3) ? 'mbc1' : (t === 5 || t === 6) ? 'mbc2' : (t >= 0x0F && t <= 0x13) ? 'mbc3' : (t >= 0x19 && t <= 0x1E) ? 'mbc5' : t === 0xFF ? 'huc1' : t === 0xFE ? 'huc3' : 'none';
+    this.rumble = t >= 0x1C && t <= 0x1E; this.hasRtc = t === 0x0F || t === 0x10; this.rumbleOn = false; this.onRumble = null;
+    this.ramBytes = [0, 0x800, 0x2000, 0x8000, 0x20000, 0x10000][rom[0x149]] || 0; if (this.mbc === 'cam') this.ramBytes = 0x20000; if (this.mbc === 'mbc2') this.ramBytes = 512; this.ramMask = this.ramBytes ? this.ramBytes - 1 : 0;
+    this.cgbFlag = rom[0x143]; this.cgb = !!(rom[0x143] & 0x80) && opts.mode !== 'dmg' && this.mbc !== 'cam';
     this.apu = new APU();
-    this.vram = new Uint8Array(0x2000); this.wram = new Uint8Array(0x2000); this.oam = new Uint8Array(0xA0);
+    this.vram = new Uint8Array(0x4000); this.wram = new Uint8Array(0x8000); this.oam = new Uint8Array(0xA0);
+    this.fbc = new Uint32Array(160 * 144); this.bcpd = new Uint8Array(64); this.ocpd = new Uint8Array(64); this.bgRGB = new Uint32Array(32); this.obRGB = new Uint32Array(32); this.palLine = new Uint8Array(160);
+    this.rtc = { secs: 0, stamp: 0, halt: false, carry: false, latched: [0, 0, 0, 0, 0], latch: 0 };
     this.hram = new Uint8Array(0x80); this.io = new Uint8Array(0x80);
     this.sram = new Uint8Array(0x20000); this.cam = new Uint8Array(0x80);
     this.fb = new Uint8Array(160 * 144); this.bgLine = new Uint8Array(160);
@@ -143,6 +148,9 @@ class GameBoy {
   }
   reset() {
     this.a = 0x01; this.zf = 1; this.nf = 0; this.hf = 1; this.cf = 1; this.b = 0; this.c = 0x13; this.d = 0; this.e = 0xD8; this.h = 1; this.l = 0x4D;
+    if (this.cgb) { this.a = 0x11; this.zf = 1; this.nf = 0; this.hf = 0; this.cf = 0; this.b = 0; this.c = 0; this.d = 0xFF; this.e = 0x56; this.h = 0; this.l = 0x0D; }
+    this.vbk = 0; this.svbk = 1; this.wbank = 1; this.key1 = 0; this.dbl = false; this.bcps = 0; this.ocps = 0; this.hdma = { src: 0, dst: 0, active: false, blocks: 0 }; this.hucMode = 0; this.irMode = false;
+    this.bcpd.fill(0xFF); this.ocpd.fill(0xFF); for (let i = 0; i < 32; i++) { this.bgRGB[i] = this.obRGB[i] = 0xFFFFFFFF; }
     this.sp = 0xFFFE; this.pc = 0x100; this.ime = false; this.eiPending = false; this.halted = false;
     this.romBank = 1; this.ramBank = 0; this.ramEnable = false; this.rom0 = 0; this.m1lo = 1; this.m1hi = 0; this.m1mode = 0; this.setBanks(); if (this.apu) this.apu.reset();
     this.IF = 0xE1; this.IE = 0; this.divT = 0; this.tima = 0; this.tma = 0; this.tac = 0; this.sb = 0; this.sc = 0; this.serialCnt = 0;
@@ -155,16 +163,20 @@ class GameBoy {
     switch (a >> 12) {
       case 0: case 1: case 2: case 3: return this.rom[this.rom0Base + a];
       case 4: case 5: case 6: case 7: return this.rom[this.romBase + (a & 0x3FFF)];
-      case 8: case 9: return this.vram[a & 0x1FFF];
+      case 8: case 9: return this.vram[(this.vbk << 13) | (a & 0x1FFF)];
       case 0xA: case 0xB:
         if (this.mbc === 'cam' && (this.ramBank & 0x10)) { const r = a & 0x7F; return r === 0 ? (this.cam[0] & 6) | (this.camBusy ? 1 : 0) : 0; }
         if (this.mbc === 'cam') return this.sram[((this.ramBank & 0xF) << 13) | (a & 0x1FFF)]; // Pocket Camera: RAM reads work regardless of the enable latch
-        if (!this.ramEnable || !this.ramBytes || (this.mbc === 'mbc3' && this.ramBank > 3)) return 0xFF;
+        if (this.mbc === 'mbc2') return this.ramEnable ? (this.sram[a & 0x1FF] & 0x0F) | 0xF0 : 0xFF;
+        if (this.mbc === 'mbc3' && this.ramBank >= 8 && this.ramBank <= 0x0C) return this.ramEnable ? this.rtc.latched[this.ramBank - 8] : 0xFF;
+        if (this.mbc === 'huc1') { if (this.irMode) return 0xC0; }
+        if (this.mbc === 'huc3') { const m = this.hucMode; if (m === 0xD) return 0x01; if (m === 0xC || m === 0xB) return 0x00; if (m === 0xE) return 0xC0; }
+        if ((this.mbc !== 'huc1' && this.mbc !== 'huc3' && !this.ramEnable) || !this.ramBytes || (this.mbc === 'mbc3' && this.ramBank > 3)) return 0xFF;
         return this.sram[(((this.ramBank & 0xF) << 13) | (a & 0x1FFF)) & this.ramMask];
-      case 0xC: case 0xD: return this.wram[a & 0x1FFF];
-      case 0xE: return this.wram[a & 0x1FFF];
+      case 0xC: case 0xD: return this.wram[this.wi(a)];
+      case 0xE: return this.wram[this.wi(a)];
       default:
-        if (a < 0xFE00) return this.wram[a & 0x1FFF];
+        if (a < 0xFE00) return this.wram[this.wi(a)];
         if (a < 0xFEA0) return this.oam[a - 0xFE00];
         if (a < 0xFF00) return 0xFF;
         if (a < 0xFF80) return this.ior(a & 0x7F);
@@ -172,6 +184,7 @@ class GameBoy {
         return this.hram[a & 0x7F];
     }
   }
+  wi(a) { a &= 0x1FFF; return a < 0x1000 ? a : (this.wbank << 12) | (a & 0xFFF); }
   ior(r) {
     if (r >= 0x10 && r <= 0x3F) return this.apu.read(r);
     switch (r) {
@@ -181,23 +194,41 @@ class GameBoy {
       case 0x0F: return this.IF | 0xE0;
       case 0x41: return (this.io[0x41] & 0x78) | 0x80 | (this.lcdOn() ? ((this.ly === this.io[0x45] ? 4 : 0) | this.mode) : 0);
       case 0x44: return this.ly;
+      case 0x4D: return this.cgb ? ((this.dbl ? 0x80 : 0) | (this.key1 & 1) | 0x7E) : 0xFF;
+      case 0x4F: return this.cgb ? (0xFE | this.vbk) : 0xFF;
+      case 0x55: return this.cgb ? (this.hdma.active ? ((this.hdma.blocks - 1) & 0x7F) : 0xFF) : 0xFF;
+      case 0x68: return this.cgb ? (this.bcps | 0x40) : 0xFF; case 0x69: return this.cgb ? this.bcpd[this.bcps & 0x3F] : 0xFF;
+      case 0x6A: return this.cgb ? (this.ocps | 0x40) : 0xFF; case 0x6B: return this.cgb ? this.ocpd[this.ocps & 0x3F] : 0xFF;
+      case 0x6C: return this.cgb ? 0xFE : 0xFF;
+      case 0x70: return this.cgb ? (0xF8 | this.svbk) : 0xFF;
       default: return this.io[r];
     }
   }
   lcdOn() { return (this.io[0x40] & 0x80) !== 0; }
   wr(a, v) {
     switch (a >> 12) {
-      case 0: case 1: this.ramEnable = (v & 0x0F) === 0x0A; return;
-      case 2: case 3: this.mbcRom(a, v); return;
+      case 0: case 1:
+        if (this.mbc === 'mbc2') { if (a & 0x100) { this.romBank = (v & 0x0F) || 1; this.setBanks(); } else this.ramEnable = (v & 0x0F) === 0x0A; return; }
+        if (this.mbc === 'huc1') { this.irMode = (v & 0x0F) === 0x0E; this.ramEnable = !this.irMode; return; }
+        if (this.mbc === 'huc3') { this.hucMode = v & 0x0F; this.ramEnable = this.hucMode === 0x0A || this.hucMode === 0x00; return; }
+        this.ramEnable = (v & 0x0F) === 0x0A; return;
+      case 2: case 3: if (this.mbc === 'mbc2') { if (a & 0x100) { this.romBank = (v & 0x0F) || 1; this.setBanks(); } return; } this.mbcRom(a, v); return;
       case 4: case 5: this.mbcBank(v); return;
-      case 6: case 7: if (this.mbc === 'mbc1') { this.m1mode = v & 1; this.setBanks(); } return;
-      case 8: case 9: this.vram[a & 0x1FFF] = v; return;
+      case 6: case 7:
+        if (this.mbc === 'mbc1') { this.m1mode = v & 1; this.setBanks(); }
+        else if (this.mbc === 'mbc3') { if (this.rtc.latch === 0 && v === 1) this.rtcLatch(); this.rtc.latch = v; }
+        return;
+      case 8: case 9: this.vram[(this.vbk << 13) | (a & 0x1FFF)] = v; return;
       case 0xA: case 0xB:
         if (this.mbc === 'cam' && (this.ramBank & 0x10)) { const r = a & 0x7F; if (r < 0x36) { if (r === 0) { this.cam[0] = v & 7; if ((v & 1) && !this.camBusy) this.camStart(); } else this.cam[r] = v; } return; }
-        if (this.ramEnable && (this.ramBytes && !(this.mbc === 'mbc3' && this.ramBank > 3))) { this.sram[(((this.ramBank & 0xF) << 13) | (a & 0x1FFF)) & (this.mbc === 'cam' ? 0x1FFFF : this.ramMask)] = v; this.sramDirty = true; } return;
-      case 0xC: case 0xD: case 0xE: this.wram[a & 0x1FFF] = v; return;
+        if (this.mbc === 'mbc2') { if (this.ramEnable) { this.sram[a & 0x1FF] = v & 0x0F; this.sramDirty = true; } return; }
+        if (this.mbc === 'mbc3' && this.ramBank >= 8 && this.ramBank <= 0x0C) { if (this.ramEnable) this.rtcWrite(this.ramBank - 8, v); return; }
+        if (this.mbc === 'huc1' && this.irMode) return;
+        if (this.mbc === 'huc3' && this.hucMode !== 0x0A) return;
+        if (((this.ramEnable || this.mbc === 'huc1') && this.ramBytes) && !(this.mbc === 'mbc3' && this.ramBank > 3)) { this.sram[(((this.ramBank & 0xF) << 13) | (a & 0x1FFF)) & (this.mbc === 'cam' ? 0x1FFFF : this.ramMask)] = v; this.sramDirty = true; } return;
+      case 0xC: case 0xD: case 0xE: this.wram[this.wi(a)] = v; return;
       default:
-        if (a < 0xFE00) { this.wram[a & 0x1FFF] = v; return; }
+        if (a < 0xFE00) { this.wram[this.wi(a)] = v; return; }
         if (a < 0xFEA0) { this.oam[a - 0xFE00] = v; return; }
         if (a < 0xFF00) return;
         if (a < 0xFF80) { this.iow(a & 0x7F, v); return; }
@@ -214,6 +245,8 @@ class GameBoy {
       case 'mbc1': this.m1lo = (v & 0x1F) || 1; break;
       case 'mbc3': this.romBank = (v & 0x7F) || 1; break;
       case 'mbc5': this.romBank = a < 0x3000 ? (this.romBank & 0x100) | v : (this.romBank & 0xFF) | ((v & 1) << 8); break;
+      case 'huc1': this.romBank = (v & 0x3F) || 1; break;
+      case 'huc3': this.romBank = (v & 0x7F) || 1; break;
       case 'cam': this.romBank = v & 0x3F; break;
       default: return;
     }
@@ -222,9 +255,24 @@ class GameBoy {
   mbcBank(v) {
     switch (this.mbc) {
       case 'mbc1': this.m1hi = v & 3; this.setBanks(); break;
-      case 'mbc5': this.ramBank = v & 0xF; break;
+      case 'mbc5': if (this.rumble) { this.ramBank = v & 7; const on = (v & 8) !== 0; if (on !== this.rumbleOn) { this.rumbleOn = on; if (this.onRumble) this.onRumble(on); } } else this.ramBank = v & 0xF; break;
+      case 'huc1': case 'huc3': this.ramBank = v & 3; break;
       case 'mbc3': case 'cam': this.ramBank = v; break;
     }
+  }
+  // ---------- MBC3 real-time clock (runs from the phone's clock; kept in the save file) ----------
+  rtcSecs() { return this.rtc.halt ? this.rtc.secs : this.rtc.secs + Math.floor((Date.now() - this.rtc.stamp) / 1000); }
+  rtcFields() { let t = this.rtcSecs(); const days = Math.floor(t / 86400); if (days >= 512) this.rtc.carry = true; return [t % 60, Math.floor(t / 60) % 60, Math.floor(t / 3600) % 24, days & 0xFF, ((days >> 8) & 1) | (this.rtc.halt ? 0x40 : 0) | (this.rtc.carry ? 0x80 : 0)]; }
+  rtcLatch() { this.rtc.latched = this.rtcFields(); }
+  rtcWrite(r, v) {
+    const f = this.rtcFields(); f[r] = v; const halt = !!(f[4] & 0x40), days = f[3] | ((f[4] & 1) << 8);
+    this.rtc.carry = !!(f[4] & 0x80); this.rtc.secs = days * 86400 + (f[2] % 24) * 3600 + (f[1] % 60) * 60 + (f[0] % 60); this.rtc.stamp = Date.now(); this.rtc.halt = halt; this.saveRtc();
+  }
+  saveRtc() { if (!this.hasRtc) return; const dv = new DataView(this.sram.buffer, 0x1FF00, 24); dv.setUint32(0, this.rtc.secs >>> 0, true); dv.setFloat64(4, this.rtc.stamp, true); dv.setUint8(12, (this.rtc.halt ? 1 : 0) | (this.rtc.carry ? 2 : 0)); dv.setUint8(13, 0x52); this.sramDirty = true; }
+  loadRtc() { // call after the save data was copied into sram; first run starts the clock at the phone's current time of day
+    if (!this.hasRtc) return; const dv = new DataView(this.sram.buffer, 0x1FF00, 24);
+    if (dv.getUint8(13) === 0x52) { this.rtc.secs = dv.getUint32(0, true); this.rtc.stamp = dv.getFloat64(4, true); const f = dv.getUint8(12); this.rtc.halt = !!(f & 1); this.rtc.carry = !!(f & 2); }
+    else { this.rtc.secs = 0; this.rtc.stamp = Date.now(); this.rtc.halt = false; this.rtc.carry = false; this.saveRtc(); }
   }
   iow(r, v) {
     if (r >= 0x10 && r <= 0x3F) { this.apu.write(r, v); return; }
@@ -238,10 +286,36 @@ class GameBoy {
       case 0x41: this.io[0x41] = v & 0x78; this.statUpdate(); return;
       case 0x44: return;
       case 0x45: this.io[0x45] = v; this.statUpdate(); return;
+      case 0x4D: if (this.cgb) this.key1 = v & 1; return;
+      case 0x4F: if (this.cgb) this.vbk = v & 1; return;
+      case 0x51: if (this.cgb) this.hdma.src = (this.hdma.src & 0xFF) | (v << 8); return;
+      case 0x52: if (this.cgb) this.hdma.src = (this.hdma.src & 0xFF00) | (v & 0xF0); return;
+      case 0x53: if (this.cgb) this.hdma.dst = (this.hdma.dst & 0xFF) | ((v & 0x1F) << 8); return;
+      case 0x54: if (this.cgb) this.hdma.dst = (this.hdma.dst & 0xFF00) | (v & 0xF0); return;
+      case 0x55: if (this.cgb) this.hdmaStart(v); return;
+      case 0x68: if (this.cgb) this.bcps = v; return; case 0x6A: if (this.cgb) this.ocps = v; return;
+      case 0x69: if (this.cgb) this.palWrite(this.bcpd, this.bgRGB, 'bcps', v); return;
+      case 0x6B: if (this.cgb) this.palWrite(this.ocpd, this.obRGB, 'ocps', v); return;
+      case 0x70: if (this.cgb) { this.svbk = v & 7; this.wbank = this.svbk || 1; } return;
       case 0x46: { const s = v << 8; for (let i = 0; i < 0xA0; i++) this.oam[i] = this.rd(s + i); this.io[0x46] = v; return; }
       default: this.io[r] = v;
     }
   }
+  // ---------- Game Boy Color: palettes + HDMA ----------
+  palWrite(arr, rgb, idxName, v) {
+    const i = this[idxName] & 0x3F; arr[i] = v; if (this[idxName] & 0x80) this[idxName] = 0x80 | ((i + 1) & 0x3F);
+    const e = i >> 1, c = arr[e * 2] | (arr[e * 2 + 1] << 8), r = c & 31, g = (c >> 5) & 31, b = (c >> 10) & 31;
+    rgb[e] = ((r << 3) | (r >> 2)) | (((g << 3) | (g >> 2)) << 8) | (((b << 3) | (b >> 2)) << 16) | 0xFF000000;
+  }
+  hdmaStart(v) {
+    const h = this.hdma;
+    if (h.active && !(v & 0x80)) { h.active = false; return; } // cancel an HBlank transfer
+    h.blocks = (v & 0x7F) + 1;
+    if (v & 0x80) { h.active = true; return; }
+    for (let b = 0; b < h.blocks; b++) this.hdmaCopy(); h.active = false; h.blocks = 0;
+  }
+  hdmaCopy() { const h = this.hdma; for (let i = 0; i < 16; i++) { this.vram[(this.vbk << 13) | ((h.dst + i) & 0x1FFF)] = this.rd((h.src + i) & 0xFFFF); } h.src = (h.src + 16) & 0xFFFF; h.dst = (h.dst + 16) & 0x1FFF; }
+  hdmaStep() { const h = this.hdma; if (!h.active) return; this.hdmaCopy(); if (--h.blocks <= 0) { h.active = false; h.blocks = 0; } }
   // ---------- joypad ----------
   setKey(name, down) {
     const m = { right: ['dir', 1], left: ['dir', 2], up: ['dir', 4], down: ['dir', 8], a: ['btn', 1], b: ['btn', 2], select: ['btn', 4], start: ['btn', 8] }[name];
@@ -297,7 +371,7 @@ class GameBoy {
     for (;;) {
       if (this.ly < 144) {
         if (this.mode === 2 && this.lineCyc >= 80) { this.mode = 3; }
-        if (this.mode === 3 && this.lineCyc >= 252) { this.mode = 0; this.renderLine(); this.statUpdate(); }
+        if (this.mode === 3 && this.lineCyc >= 252) { this.mode = 0; this.renderLine(); if (this.hdma.active) this.hdmaStep(); this.statUpdate(); }
       }
       if (this.lineCyc >= 456) {
         this.lineCyc -= 456; this.ly++;
@@ -309,7 +383,44 @@ class GameBoy {
       break;
     }
   }
+  renderLineCGB() {
+    const io = this.io, ly = this.ly, lcdc = io[0x40], fbc = this.fbc, o = ly * 160, vram = this.vram, line = this.bgLine, pl = this.palLine, bg = this.bgRGB, ob = this.obRGB;
+    const scx = io[0x43], scy = io[0x42], mb = (lcdc & 8) ? 0x1C00 : 0x1800, uns = lcdc & 0x10;
+    const y = (ly + scy) & 255, row = y >> 3, ty = y & 7;
+    for (let x = 0; x < 160; x++) {
+      const px = (x + scx) & 255, mi = mb + row * 32 + (px >> 3), idx = vram[mi], at = vram[0x2000 + mi];
+      const t = uns ? idx * 16 : 0x1000 + ((idx << 24 >> 24) * 16), yy = (at & 0x40) ? 7 - ty : ty, xx = (at & 0x20) ? (px & 7) : 7 - (px & 7), a = ((at & 8) << 10) + t + yy * 2;
+      const col = ((vram[a] >> xx) & 1) | (((vram[a + 1] >> xx) & 1) << 1); line[x] = col; pl[x] = (at & 7) | ((at & 0x80) ? 8 : 0); fbc[o + x] = bg[(at & 7) * 4 + col];
+    }
+    const wy = io[0x4A], wx = io[0x4B] - 7;
+    if ((lcdc & 0x20) && ly >= wy && io[0x4B] < 167) {
+      const wb = (lcdc & 0x40) ? 0x1C00 : 0x1800, wrow = this.winLine >> 3, wty = this.winLine & 7;
+      for (let x = Math.max(0, wx); x < 160; x++) {
+        const px = x - wx, mi = wb + wrow * 32 + (px >> 3), idx = vram[mi], at = vram[0x2000 + mi];
+        const t = uns ? idx * 16 : 0x1000 + ((idx << 24 >> 24) * 16), yy = (at & 0x40) ? 7 - wty : wty, xx = (at & 0x20) ? (px & 7) : 7 - (px & 7), a = ((at & 8) << 10) + t + yy * 2;
+        const col = ((vram[a] >> xx) & 1) | (((vram[a + 1] >> xx) & 1) << 1); line[x] = col; pl[x] = (at & 7) | ((at & 0x80) ? 8 : 0); fbc[o + x] = bg[(at & 7) * 4 + col];
+      }
+      this.winLine++;
+    }
+    if (lcdc & 2) {
+      const h = (lcdc & 4) ? 16 : 8, oam = this.oam, list = [], master = lcdc & 1;
+      for (let i = 0; i < 40 && list.length < 10; i++) { const sy = oam[i * 4] - 16; if (ly >= sy && ly < sy + h) list.push(i); }
+      for (let k = list.length - 1; k >= 0; k--) { // lower OAM index wins on the Color Game Boy, so draw it last
+        const i = list[k], sy = oam[i * 4] - 16, sx0 = oam[i * 4 + 1] - 8, fl = oam[i * 4 + 3];
+        let tile = oam[i * 4 + 2]; if (h === 16) tile &= 0xFE;
+        let tyy = ly - sy; if (fl & 0x40) tyy = h - 1 - tyy;
+        const a = ((fl & 8) << 10) + tile * 16 + tyy * 2, b1 = vram[a], b2 = vram[a + 1], pal = (fl & 7) * 4;
+        for (let px = 0; px < 8; px++) {
+          const sx = sx0 + px; if (sx < 0 || sx >= 160) continue;
+          const bit = (fl & 0x20) ? px : 7 - px, col = ((b1 >> bit) & 1) | (((b2 >> bit) & 1) << 1);
+          if (!col) continue; if (master && line[sx] && ((fl & 0x80) || (pl[sx] & 8))) continue;
+          fbc[o + sx] = ob[pal + col];
+        }
+      }
+    }
+  }
   renderLine() {
+    if (this.cgb) { this.renderLineCGB(); return; }
     const io = this.io, ly = this.ly, lcdc = io[0x40], fb = this.fb, o = ly * 160, vram = this.vram, line = this.bgLine;
     const bgp = io[0x47];
     if (lcdc & 1) {
@@ -416,7 +527,7 @@ class GameBoy {
       if (lo === 0) {
         if (op === 0x00) return 4;
         if (op === 0x08) { const a = this.fetch16(); this.wr(a, this.sp & 255); this.wr((a + 1) & 0xFFFF, this.sp >> 8); return 20; }
-        if (op === 0x10) { this.fetch(); return 4; }
+        if (op === 0x10) { this.fetch(); if (this.cgb && (this.key1 & 1)) { this.dbl = !this.dbl; this.key1 = 0; } return 4; }
         if (op === 0x18) { const e = this.fetch() << 24 >> 24; this.pc = (this.pc + e) & 0xFFFF; return 12; }
         const e = this.fetch() << 24 >> 24; if (this.cond((op >> 3) & 3)) { this.pc = (this.pc + e) & 0xFFFF; return 12; } return 8;
       }
@@ -479,16 +590,16 @@ class GameBoy {
       const k = [9, 3, 5, 7][this.tac & 3] + 1, ticks = (this.divT >> k) - (old >> k);
       if (ticks > 0) { let t = this.tima + ticks; if (t > 255) { t = this.tma + ((t - 256) % (256 - this.tma || 256)); this.IF |= 4; } this.tima = t & 255; }
     }
-    this.total += cy; this.ppu(cy); this.apu.step(cy);
-    if (this.serialCnt > 0 && (this.serialCnt -= cy) <= 0) {
+    const cp = this.dbl ? cy >> 1 : cy; this.total += cp; this.ppu(cp); this.apu.step(cp);
+    if (this.serialCnt > 0 && (this.serialCnt -= cp) <= 0) {
       this.serialCnt = 0; this.xfers = (this.xfers | 0) + 1; this.sb = this.printer.transfer(this.sb, this.total); this.sc &= 0x7F; this.IF |= 8;
     }
-    if (this.camBusy && (this.camCnt -= cy) <= 0) { this.camBusy = false; this.camCapture(); }
+    if (this.camBusy && (this.camCnt -= cp) <= 0) { this.camBusy = false; this.camCapture(); }
     return cy;
   }
   runFrame() {
     this.frameReady = false; let c = 0;
-    while (!this.frameReady && c < 140000) c += this.step();
+    while (!this.frameReady && c < 300000) c += this.step();
   }
 }
 if (typeof window !== 'undefined') window.GameBoy = GameBoy;
