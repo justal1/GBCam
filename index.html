@@ -130,7 +130,7 @@ body.kid button,body.kid select{min-height:46px}
 body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v31</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v35</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
 
 <div id="camdock">
@@ -280,10 +280,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=31"></script>
-<script src="fx.js?v=31"></script>
-<script src="fx2.js?v=31"></script>
-<script src="goo.js?v=31"></script>
+<script src="gbc.js?v=35"></script>
+<script src="fx.js?v=35"></script>
+<script src="fx2.js?v=35"></script>
+<script src="goo.js?v=35"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -506,16 +506,16 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=31"></script>
-<script src="overlay.js?v=31"></script>
-<script src="shots.js?v=31"></script>
-<script src="album.js?v=31"></script>
-<script src="ansi.js?v=31"></script>
-<script src="vendor/qrcode.js?v=31"></script>
-<script src="make.js?v=31"></script>
-<script src="gb.js?v=31"></script>
-<script src="gbui.js?v=31"></script>
-<script src="kid.js?v=31"></script>
-<script src="swipe.js?v=31"></script>
+<script src="print.js?v=35"></script>
+<script src="overlay.js?v=35"></script>
+<script src="shots.js?v=35"></script>
+<script src="album.js?v=35"></script>
+<script src="ansi.js?v=35"></script>
+<script src="vendor/qrcode.js?v=35"></script>
+<script src="make.js?v=35"></script>
+<script src="gb.js?v=35"></script>
+<script src="gbui.js?v=35"></script>
+<script src="kid.js?v=35"></script>
+<script src="swipe.js?v=35"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

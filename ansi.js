@@ -50,7 +50,12 @@ const Ansi = (() => {
       if (c === 0x09) { x = Math.min(cols - 1, (x + 8) & ~7); continue; } if (c === 0x08) { x = Math.max(0, x - 1); continue; } if (c === 0x1B) continue;
       out(c === 0 ? 32 : c);
     }
-    d.rows = Math.max(1, maxY + 1); d.ch = d.ch.slice(0, d.cols * d.rows); d.at = d.at.slice(0, d.cols * d.rows); return d;
+    d.rows = Math.max(1, maxY + 1); d.ch = d.ch.slice(0, d.cols * d.rows); d.at = d.at.slice(0, d.cols * d.rows);
+    if (!sauce || !sauce.width) { // plain text / NFO: crop to the columns actually used
+      let used = 0; for (let r = 0; r < d.rows; r++) for (let k = d.cols - 1; k >= used; k--) if (d.ch[r * d.cols + k] !== 32) { used = k + 1; break; }
+      if (used >= 20 && used < d.cols) { const nc = used, ch = new Uint8Array(nc * d.rows), at = new Uint8Array(nc * d.rows); for (let r = 0; r < d.rows; r++) { ch.set(d.ch.subarray(r * d.cols, r * d.cols + nc), r * nc); at.set(d.at.subarray(r * d.cols, r * d.cols + nc), r * nc); } d.cols = nc; d.ch = ch; d.at = at; }
+    }
+    return d;
   }
 
   // ---------- font + rendering ----------
@@ -84,12 +89,18 @@ const Ansi = (() => {
     }
     return bits;
   }
+  function thresholdCanvas(c, invert) { // area-averaged then thresholded with a slight bias so thin strokes stay solid
+    const w = c.width, h = c.height, d = c.getContext('2d').getImageData(0, 0, w, h).data, bits = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) { let l = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255; if (invert) l = 1 - l; bits[i] = l < 0.62 ? 1 : 0; }
+    return bits;
+  }
+  const isTextLike = doc => { const used = new Set(); for (let i = 0; i < doc.at.length; i++) used.add(doc.at[i]); return used.size <= 2; };
   // doc -> printer bits. dir 'side' = 24-row strips turned a quarter (1:1 pixels); 'up' = whole width scaled to the paper.
   function toBits(doc, o) {
     o = o || {}; const W = 384, dir = o.dir || 'side', paper = o.look !== 'screen', parts = [], full = render(doc);
     if (dir === 'up') {
       const k = W / full.width, c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(full.height * k)); const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(full, 0, 0, c.width, c.height);
-      parts.push({ bits: ditherCanvas(c, paper), h: c.height });
+      parts.push({ bits: o.crisp ? thresholdCanvas(c, paper) : ditherCanvas(c, paper), h: c.height });
     } else {
       const per = 24, strips = Math.min(8, Math.ceil(doc.rows / per));
       for (let s = 0; s < strips; s++) {
@@ -163,6 +174,8 @@ const Ansi = (() => {
       text(d, 33, 22, 'M E O W', 14, 0); return d;
     },
   };
+  const NFO_B64 = 'INzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NwNCiAgICAgICAgICAgICAgICAgICAgINzf39/fINzf39/cIN/f29/fINzf39/fINzf39/cINvcINzbICAgICAgICAgICAgICAgICAgICAgDQogICAgICAgICAgICAgICAgICAgICDbICAgICDb39/f2yAgINsgICDbICAgICDb39/f2yDbIN8g2yAgICAgICAgICAgICAgICAgICAgIA0KICAgICAgICAgICAgICAgICAgICAgIN/f398g3yAgIN8gICDfICAgIN/f398g3yAgIN8g3yAgIN8gICAgICAgICAgICAgICAgICAgICANCiDf39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fDQoNCiDJzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc27DQoguiAgICAgICAgICAgICAgICAgICAgICAgIEcgQiAgIEMgQSBUIEMgQSBNICAgdiAzIDEgICAgICAgICAgICAgICAgICAgICAgICAgug0KILogICAgICAgICAgICAgICAgICAgICAgUCBSIEkgTiBUIEUgUiAgIEUgRCBJIFQgSSBPIE4gICAgICAgICAgICAgICAgICAgICAgILoNCiDIzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc28DQoNCiCwsbLbIFJFTEVBU0UgSU5GTyDbsrGwDQoNCiBSZWxlYXNlIG5hbWUgLi4uLi4uLi4uOiBHQi5DYXRDYW0udjMxLlByaW50ZXIuRWRpdGlvbi1DQVRDQU0NCiBSZWxlYXNlIGRhdGUgLi4uLi4uLi4uOiAyMDI2LTExLTIzDQogVHlwZSAuLi4uLi4uLi4uLi4uLi4uLjogVG95IC8gdGhlcm1hbCBwcmludGVyIHV0aWxpdHkNCiBQbGF0Zm9ybSAuLi4uLi4uLi4uLi4uOiBBbmRyb2lkIENocm9tZSAoV2ViIEJsdWV0b290aCkNCiBQcm90ZWN0aW9uIC4uLi4uLi4uLi4uOiBOb25lLiBXZSBhcmUgbmljZSBwZW9wbGUuDQogU2l6ZSAuLi4uLi4uLi4uLi4uLi4uLjogMSB4IDIgTUINCiBQcmludGVyIHRlc3RlZCAuLi4uLi4uOiBQRDAxIGNhdCBwcmludGVyLCAzODQgZG90cywgNThtbQ0KDQogsLGy2yBERVNDUklQVElPTiDbsrGwDQoNCiAgVHVybiB5b3VyIHBob25lIGludG8gYSBHYW1lIEJveSBDYW1lcmEuIFRha2UgYSBwaG90bywgcGljayBhIGZhY2UtbWVsdGluZw0KICBlZmZlY3QsIGFuZCBwcmludCBpdCBvbiBhIHRoZXJtYWwgY2F0IHByaW50ZXIuIFNtZWFyIHlvdXJzZWxmIHdpdGggUG93ZXINCiAgR29vLCBhZGQgYSBzY3JvbGwgYm9yZGVyLCBvciBwcmludCBhIHdhbnRlZCBwb3N0ZXIgZm9yIHRoZSBiaXNjdWl0IHRoaWVmLg0KDQogIFBsYXkgcmVhbCBHYW1lIEJveSBhbmQgR2FtZSBCb3kgQ29sb3IgZ2FtZXMgaW4gdGhlIGJ1aWx0LWluIGVtdWxhdG9yIGFuZA0KICBwcmludCB0aGVpciBzY3JlZW5zLiBNYWtlIG1hemVzLCBzdWRva3UsIG5hbWUgYmFkZ2VzLCBRUiBjb2RlcywgY29sb3VyaW5nDQogIHBhZ2VzIGFuZCBvbGQgc2Nob29sIEFOU0kgYXJ0IHRoYXQgcHJpbnRzIDE6MSBzaWRld2F5cyBkb3duIHRoZSBwYXBlci4NCg0KILCxstsgRkVBVFVSRVMg27KxsA0KDQogIP4gNDgrIGNhbWVyYSBlZmZlY3RzLCBmcm9tIGhhbGZ0b25lIHRvIGh5cGVyc3BhY2UNCiAg/iBHYW1lIEJveSBDYW1lcmEgbG9vayB3aXRoIHJlYWwgNC1zaGFkZSBkaXRoZXJpbmcNCiAg/iBQaG90byBib290aCBzdHJpcHMsIHN0aWNrZXJzLCBzY3JvbGxzLCBiYWRnZXMNCiAg/iBSZWFsIEdhbWUgQm95IFByaW50ZXIgcHJvdG9jb2wgc3VwcG9ydA0KICD+IEtpZCBtb2RlIHdpdGggYSBwYXJlbnQgUElOIGFuZCBhIHBhcGVyIGJ1ZGdldA0KICD+IFRoaXMgdmVyeSBORk8sIHJlbmRlcmVkIHdpdGggYSByZWFsIFZHQSBmb250DQoNCiCwsbLbIElOU1RBTEwgTk9URVMg27KxsA0KDQogIDEuIE9wZW4gdGhlIHBhZ2UgaW4gQ2hyb21lIG9uIEFuZHJvaWQuDQogIDIuIFRhcCBDb25uZWN0IGFuZCBwaWNrIHlvdXIgcHJpbnRlci4NCiAgMy4gSWYgaXQgcHJpbnRzIGdhcmJhZ2UsIHNldCBjaHVuayBieXRlcyB0byAyMC4NCiAgNC4gUHJpbnQgc29tZXRoaW5nIHNpbGx5LiBTdGljayBpdCBvbiB0aGUgZnJpZGdlLg0KDQogsLGy2yBHUkVFVFog27KxsA0KDQogIEdyZWV0aW5ncyBmbHkgb3V0IHRvIHRoZSBHYW1lIEJveSBDYW1lcmEsIHRoZSA4MHgyNCBzY3JlZW4sIHRoZSBzb3VuZCBvZg0KICBhIDE0LjQgbW9kZW0gY29ubmVjdGluZywgZXZlcnkgc3lzb3Agd2hvIGV2ZXIga2VwdCBhIGJvYXJkIHJ1bm5pbmcNCiAgdGhyb3VnaCB0aGUgbmlnaHQsIGFuZCB5b3UgZm9yIHJlYWRpbmcgdG8gdGhlIGVuZC4NCg0KILCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsrCxsg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0gY2F0Y2FtIGNyZXcgLSAyMDI2IC0gICAgICAgICAgICAgICAgICAgICAgICAgICANCiDc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3NzcDQo=';
+  ART.nfo = () => { const b = Uint8Array.from(atob(NFO_B64), c => c.charCodeAt(0)); const d = parse(b); d.sauce = { title: 'GB CatCam release NFO', author: 'catcam crew', group: '', date: '', width: 80 }; return d; };
   const NAMES = { bbs: 'GB CatCam BBS screen', cat: 'Cat', plasma: 'Plasma', copper: 'Copper bars' };
-  return { parse, render, toBits, ready, ART, NAMES, blank, CP437, VGA, put, text };
+  return { parse, render, toBits, ready, ART, NAMES, blank, CP437, VGA, put, text, isTextLike };
 })();

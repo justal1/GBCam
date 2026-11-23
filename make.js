@@ -44,7 +44,7 @@ const Make = (() => {
     return page(hgt, x => { let px = (W - tot * unit) >> 1, bar = true; for (const m of w) { if (bar) x.fillRect(px, 0, m * unit, hgt); px += m * unit; bar = !bar; } });
   }
 
-  let ansiDoc = null;
+  let ansiDoc = null, ansiKind = null;
   // ---------------- picture -> 384x336 Floyd-Steinberg bits ----------------
   let pickedBits = null;
   function ditherBitmap(bmp) {
@@ -369,6 +369,155 @@ const Make = (() => {
     });
   }
 
+
+  // ---------------- gift tags (present labels for any occasion) ----------------
+  const GIFT_OCC = [
+    { id: 'christmas', name: 'Christmas', border: 'holly', icon: 'tree', msg: 'Merry Christmas!' },
+    { id: 'birthday', name: 'Birthday', border: 'confetti', icon: 'cake', msg: 'Happy Birthday!' },
+    { id: 'halloween', name: 'Halloween', border: 'web', icon: 'pumpkin', msg: 'Happy Halloween!' },
+    { id: 'easter', name: 'Easter', border: 'flowers', icon: 'egg', msg: 'Happy Easter!' },
+    { id: 'valentine', name: 'Valentine’s Day', border: 'hearts', icon: 'heart', msg: 'With all my love' },
+    { id: 'wedding', name: 'Wedding / Anniversary', border: 'plain', icon: 'rings', msg: 'Congratulations!' },
+    { id: 'baby', name: 'New baby', border: 'bunting', icon: 'bear', msg: 'Welcome, little one' },
+    { id: 'hanukkah', name: 'Hanukkah', border: 'plain', icon: 'menorah', msg: 'Happy Hanukkah!' },
+    { id: 'diwali', name: 'Diwali', border: 'flowers', icon: 'diya', msg: 'Happy Diwali!' },
+    { id: 'graduation', name: 'Graduation', border: 'bunting', icon: 'cap', msg: 'Well done!' },
+    { id: 'thanks', name: 'Thank you', border: 'flowers', icon: 'flower', msg: 'Thank you!' },
+    { id: 'general', name: 'Any occasion', border: 'confetti', icon: 'present', msg: 'A little something for you' },
+  ];
+
+  function giftIcon(x, cx, cy, S, kind) {
+    x.save(); x.translate(cx, cy); x.strokeStyle = '#000'; x.fillStyle = '#000'; x.lineWidth = Math.max(3, S / 22); x.lineJoin = x.lineCap = 'round';
+    const star = (px, py, r) => { x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; x[i ? 'lineTo' : 'moveTo'](px + Math.cos(a) * rr, py + Math.sin(a) * rr); } x.closePath(); };
+    if (kind === 'tree') {
+      for (let i = 0; i < 3; i++) { const top = -S * 0.36 + i * S * 0.24, w = S * (0.30 + i * 0.13); x.beginPath(); x.moveTo(0, top); x.lineTo(w, top + S * 0.34); x.lineTo(-w, top + S * 0.34); x.closePath(); x.fill(); }
+      x.fillRect(-S * 0.06, S * 0.34, S * 0.12, S * 0.14); x.fillStyle = '#fff'; for (const [dx, dy] of [[-0.12, -0.05], [0.14, 0.04], [-0.2, 0.2], [0.08, 0.22], [0.24, 0.3], [-0.05, 0.33]]) { x.beginPath(); x.arc(dx * S, dy * S, S * 0.035, 0, 7); x.fill(); }
+      x.fillStyle = '#fff'; star(0, -S * 0.44, S * 0.13); x.fill(); x.stroke();
+    } else if (kind === 'present') {
+      const w = S * 0.8, h = S * 0.55; x.fillStyle = '#fff'; x.fillRect(-w / 2, -h / 2 + S * 0.1, w, h); x.strokeRect(-w / 2, -h / 2 + S * 0.1, w, h); x.fillRect(-w / 2 - S * 0.04, -h / 2 + S * 0.1 - S * 0.14, w + S * 0.08, S * 0.14); x.strokeRect(-w / 2 - S * 0.04, -h / 2 + S * 0.1 - S * 0.14, w + S * 0.08, S * 0.14);
+      x.fillStyle = '#000'; x.fillRect(-S * 0.07, -h / 2 + S * 0.1 - S * 0.14, S * 0.14, h + S * 0.14);
+      for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(sd * S * 0.16, -h / 2 - S * 0.14, S * 0.15, S * 0.09, sd * -0.5, 0, 7); x.stroke(); }
+    } else if (kind === 'snowman') {
+      x.fillStyle = '#fff'; for (const [dy, r] of [[S * 0.26, S * 0.24], [-S * 0.04, S * 0.18], [-S * 0.27, S * 0.13]]) { x.beginPath(); x.arc(0, dy, r, 0, 7); x.fill(); x.stroke(); }
+      x.fillStyle = '#000'; x.fillRect(-S * 0.14, -S * 0.5, S * 0.28, S * 0.14); x.fillRect(-S * 0.2, -S * 0.38, S * 0.4, S * 0.05);
+      for (const sd of [-1, 1]) { x.beginPath(); x.arc(sd * S * 0.05, -S * 0.3, S * 0.018, 0, 7); x.fill(); } x.beginPath(); x.moveTo(0, -S * 0.26); x.lineTo(S * 0.12, -S * 0.23); x.lineTo(0, -S * 0.21); x.closePath(); x.fill();
+      for (const dy of [-0.08, 0.02, 0.2, 0.32]) { x.beginPath(); x.arc(0, dy * S, S * 0.02, 0, 7); x.fill(); }
+      for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(sd * S * 0.17, -S * 0.04); x.lineTo(sd * S * 0.42, -S * 0.18); x.stroke(); }
+    } else if (kind === 'cane') {
+      x.beginPath(); x.moveTo(S * 0.18, S * 0.46); x.lineTo(S * 0.18, -S * 0.2); x.arc(0, -S * 0.2, S * 0.18, 0, -Math.PI, true); x.lineTo(-S * 0.18, -S * 0.08);
+      x.lineWidth = S * 0.17; x.strokeStyle = '#000'; x.stroke(); x.lineWidth = S * 0.17 - 4; x.strokeStyle = '#fff'; x.setLineDash([S * 0.07, S * 0.075]); x.stroke(); x.setLineDash([]);
+      x.lineWidth = S * 0.17 + 4; x.strokeStyle = '#000'; x.globalCompositeOperation = 'destination-over'; x.stroke();
+    } else if (kind === 'bauble') {
+      x.fillStyle = '#fff'; x.beginPath(); x.arc(0, S * 0.1, S * 0.34, 0, 7); x.fill(); x.stroke(); x.fillStyle = '#000'; x.fillRect(-S * 0.08, -S * 0.3, S * 0.16, S * 0.1); x.beginPath(); x.arc(0, -S * 0.36, S * 0.06, 0, 7); x.stroke();
+      x.save(); x.beginPath(); x.arc(0, S * 0.1, S * 0.34, 0, 7); x.clip(); x.lineWidth = S * 0.045; for (let i = -5; i <= 5; i++) { x.beginPath(); x.moveTo(-S * 0.4, S * 0.1 + i * S * 0.1); x.lineTo(S * 0.4, S * 0.1 + i * S * 0.1 + S * 0.12); x.stroke(); } x.restore();
+    } else if (kind === 'cake') {
+      x.fillStyle = '#fff'; x.fillRect(-S * 0.36, S * 0.1, S * 0.72, S * 0.28); x.strokeRect(-S * 0.36, S * 0.1, S * 0.72, S * 0.28); x.fillRect(-S * 0.23, -S * 0.12, S * 0.46, S * 0.22); x.strokeRect(-S * 0.23, -S * 0.12, S * 0.46, S * 0.22);
+      x.fillStyle = '#000'; for (let i = -3; i <= 3; i++) { x.beginPath(); x.arc(i * S * 0.1, S * 0.1, S * 0.05, 0, Math.PI); x.fill(); } for (let i = -2; i <= 2; i++) { x.beginPath(); x.arc(i * S * 0.092, -S * 0.12, S * 0.045, 0, Math.PI); x.fill(); }
+      for (const cx2 of [-0.12, 0, 0.12]) { x.fillStyle = '#fff'; x.fillRect(cx2 * S - S * 0.02, -S * 0.26, S * 0.04, S * 0.14); x.strokeRect(cx2 * S - S * 0.02, -S * 0.26, S * 0.04, S * 0.14); x.fillStyle = '#000'; x.beginPath(); x.ellipse(cx2 * S, -S * 0.32, S * 0.025, S * 0.045, 0, 0, 7); x.fill(); }
+      x.fillRect(-S * 0.44, S * 0.38, S * 0.88, S * 0.05);
+    } else if (kind === 'balloons') {
+      for (const [bx, by, fill] of [[-0.22, -0.1, 1], [0.06, -0.2, 0], [0.3, -0.04, 2]]) { x.fillStyle = fill === 1 ? '#000' : '#fff'; x.beginPath(); x.ellipse(bx * S, by * S, S * 0.15, S * 0.19, 0, 0, 7); x.fill(); x.stroke(); if (fill === 2) { x.save(); x.clip(); for (let k = -3; k <= 3; k++) { x.beginPath(); x.moveTo(bx * S + k * S * 0.05, (by - 0.2) * S); x.lineTo(bx * S + k * S * 0.05, (by + 0.2) * S); x.stroke(); } x.restore(); } if (fill === 0) { x.fillStyle = '#000'; star(bx * S, by * S, S * 0.07); x.fill(); } x.fillStyle = '#000'; x.beginPath(); x.moveTo(bx * S - S * 0.03, (by + 0.19) * S); x.lineTo(bx * S + S * 0.03, (by + 0.19) * S); x.lineTo(bx * S, (by + 0.23) * S); x.closePath(); x.fill(); x.lineWidth = 2; x.beginPath(); x.moveTo(bx * S, (by + 0.23) * S); x.quadraticCurveTo(bx * S * 0.4, S * 0.34, S * 0.04, S * 0.46); x.stroke(); x.lineWidth = Math.max(3, S / 22); }
+    } else if (kind === 'pumpkin') {
+      x.fillStyle = '#000'; for (const dx of [-0.2, 0, 0.2]) { x.beginPath(); x.ellipse(dx * S, S * 0.08, S * (dx ? 0.2 : 0.22), S * 0.31, 0, 0, 7); x.fill(); } x.fillRect(-S * 0.04, -S * 0.32, S * 0.08, S * 0.13);
+      x.fillStyle = '#fff'; for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(sd * S * 0.15, -S * 0.02); x.lineTo(sd * S * 0.07, S * 0.06); x.lineTo(sd * S * 0.22, S * 0.06); x.closePath(); x.fill(); }
+      x.beginPath(); x.moveTo(0, S * 0.1); x.lineTo(-S * 0.04, S * 0.16); x.lineTo(S * 0.04, S * 0.16); x.closePath(); x.fill(); x.beginPath(); x.moveTo(-S * 0.24, S * 0.2); for (let i = 0; i <= 6; i++) x.lineTo(-S * 0.24 + i * S * 0.08, S * (i % 2 ? 0.2 : 0.3)); x.lineTo(S * 0.24, S * 0.2); x.closePath(); x.fill();
+    } else if (kind === 'ghost') {
+      x.fillStyle = '#fff'; x.beginPath(); x.moveTo(-S * 0.3, S * 0.42); x.lineTo(-S * 0.3, -S * 0.08); x.arc(0, -S * 0.08, S * 0.3, Math.PI, 0); x.lineTo(S * 0.3, S * 0.42); for (let i = 0; i < 3; i++) x.quadraticCurveTo(S * (0.2 - i * 0.2), S * 0.3, S * (0.1 - i * 0.2), S * 0.42); x.closePath(); x.fill(); x.stroke();
+      x.fillStyle = '#000'; for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(sd * S * 0.1, -S * 0.1, S * 0.045, S * 0.065, 0, 0, 7); x.fill(); } x.beginPath(); x.ellipse(0, S * 0.07, S * 0.06, S * 0.08, 0, 0, 7); x.fill();
+    } else if (kind === 'bat') {
+      x.fillStyle = '#000'; for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(0, -S * 0.04); x.quadraticCurveTo(sd * S * 0.2, -S * 0.34, sd * S * 0.5, -S * 0.18); x.quadraticCurveTo(sd * S * 0.46, -S * 0.02, sd * S * 0.38, S * 0.1); x.quadraticCurveTo(sd * S * 0.3, S * 0.04, sd * S * 0.24, S * 0.14); x.quadraticCurveTo(sd * S * 0.16, S * 0.05, sd * S * 0.08, S * 0.2); x.lineTo(0, S * 0.12); x.closePath(); x.fill(); }
+      x.beginPath(); x.ellipse(0, 0, S * 0.1, S * 0.16, 0, 0, 7); x.fill(); for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(sd * S * 0.03, -S * 0.12); x.lineTo(sd * S * 0.1, -S * 0.26); x.lineTo(sd * S * 0.12, -S * 0.1); x.closePath(); x.fill(); } x.fillStyle = '#fff'; for (const sd of [-1, 1]) { x.beginPath(); x.arc(sd * S * 0.04, -S * 0.04, S * 0.02, 0, 7); x.fill(); }
+    } else if (kind === 'egg') {
+      x.fillStyle = '#fff'; x.beginPath(); x.moveTo(0, -S * 0.44); x.bezierCurveTo(S * 0.34, -S * 0.36, S * 0.36, S * 0.4, 0, S * 0.44); x.bezierCurveTo(-S * 0.36, S * 0.4, -S * 0.34, -S * 0.36, 0, -S * 0.44); x.closePath(); x.fill(); x.save(); x.clip();
+      x.fillStyle = '#000'; for (const [yy, hh] of [[-0.1, 0.12], [0.22, 0.1]]) { x.beginPath(); x.moveTo(-S * 0.4, yy * S); for (let i = 0; i <= 8; i++) x.lineTo(-S * 0.4 + i * S * 0.1, (yy + (i % 2 ? hh : 0)) * S); for (let i = 8; i >= 0; i--) x.lineTo(-S * 0.4 + i * S * 0.1, (yy + 0.06 + (i % 2 ? hh : 0)) * S); x.closePath(); x.fill(); }
+      for (const [dx, dy] of [[-0.12, -0.28], [0.1, -0.22], [0, 0.08], [-0.15, 0.06], [0.15, 0.1], [-0.05, 0.36], [0.1, 0.36]]) { x.beginPath(); x.arc(dx * S, dy * S, S * 0.03, 0, 7); x.fill(); } x.restore();
+      x.beginPath(); x.moveTo(0, -S * 0.44); x.bezierCurveTo(S * 0.34, -S * 0.36, S * 0.36, S * 0.4, 0, S * 0.44); x.bezierCurveTo(-S * 0.36, S * 0.4, -S * 0.34, -S * 0.36, 0, -S * 0.44); x.closePath(); x.stroke();
+    } else if (kind === 'bunny') {
+      x.fillStyle = '#fff'; for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(sd * S * 0.14, -S * 0.26, S * 0.07, S * 0.22, sd * 0.12, 0, 7); x.fill(); x.stroke(); x.fillStyle = '#000'; x.beginPath(); x.ellipse(sd * S * 0.14, -S * 0.24, S * 0.025, S * 0.15, sd * 0.12, 0, 7); x.fill(); x.fillStyle = '#fff'; }
+      x.beginPath(); x.ellipse(0, S * 0.14, S * 0.3, S * 0.26, 0, 0, 7); x.fill(); x.stroke(); x.fillStyle = '#000'; for (const sd of [-1, 1]) { x.beginPath(); x.arc(sd * S * 0.1, S * 0.08, S * 0.03, 0, 7); x.fill(); } x.beginPath(); x.moveTo(-S * 0.04, S * 0.16); x.lineTo(S * 0.04, S * 0.16); x.lineTo(0, S * 0.21); x.closePath(); x.fill();
+      x.lineWidth = 2; x.beginPath(); x.moveTo(0, S * 0.21); x.lineTo(0, S * 0.26); x.moveTo(-S * 0.07, S * 0.3); x.quadraticCurveTo(0, S * 0.24, S * 0.07, S * 0.3); for (const sd of [-1, 1]) for (const k of [-1, 1]) { x.moveTo(sd * S * 0.1, S * 0.19); x.lineTo(sd * S * 0.4, S * (0.19 + k * 0.05)); } x.stroke();
+    } else if (kind === 'heart') {
+      const hp = (sc) => { x.beginPath(); for (let i = 0; i <= 80; i++) { const t = i / 80 * Math.PI * 2, hx = 16 * Math.pow(Math.sin(t), 3), hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t); x[i ? 'lineTo' : 'moveTo'](hx * sc, -hy * sc + sc * 1.5); } x.closePath(); };
+      hp(S * 0.027); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = S * 0.035; x.beginPath(); x.arc(-S * 0.16, -S * 0.1, S * 0.12, Math.PI * 1.05, Math.PI * 1.6); x.stroke();
+    } else if (kind === 'rings') {
+      x.lineWidth = S * 0.07; for (const dx of [-0.13, 0.13]) { x.beginPath(); x.arc(dx * S, S * 0.12, S * 0.22, 0, 7); x.stroke(); } x.lineWidth = S * 0.025; x.strokeStyle = '#fff'; x.beginPath(); x.arc(-S * 0.13, S * 0.12, S * 0.22, -0.4, 1.2); x.stroke(); x.strokeStyle = '#000';
+      x.fillStyle = '#000'; x.beginPath(); x.moveTo(S * 0.13, -S * 0.26); x.lineTo(S * 0.22, -S * 0.15); x.lineTo(S * 0.13, -S * 0.04); x.lineTo(S * 0.04, -S * 0.15); x.closePath(); x.fill();
+    } else if (kind === 'menorah') {
+      x.lineWidth = S * 0.05; x.beginPath(); x.moveTo(-S * 0.4, -S * 0.02); x.quadraticCurveTo(-S * 0.4, S * 0.32, 0, S * 0.32); x.quadraticCurveTo(S * 0.4, S * 0.32, S * 0.4, -S * 0.02); x.stroke(); x.beginPath(); x.moveTo(0, S * 0.32); x.lineTo(0, S * 0.46); x.moveTo(-S * 0.18, S * 0.46); x.lineTo(S * 0.18, S * 0.46); x.stroke();
+      for (let i = -4; i <= 4; i++) { const cx2 = i * S * 0.1, yb = i === 0 ? -S * 0.16 : -S * 0.02 + (S * 0.30) * (1 - Math.pow(i / 4, 2)) * 0.0 + Math.abs(i) * 0 - (Math.abs(i) > 0 ? 0 : 0), top = (i === 0 ? -S * 0.38 : -S * 0.24) + (i === 0 ? 0 : 0); const base = i === 0 ? S * 0.22 : -S * 0.02 + S * 0.30 * (1 - (Math.abs(i) / 4) ** 2) * 0.55; x.fillStyle = '#000'; x.fillRect(cx2 - S * 0.02, (i === 0 ? -S * 0.12 : base - S * 0.16), S * 0.04, i === 0 ? S * 0.34 : S * 0.16); x.beginPath(); x.ellipse(cx2, (i === 0 ? -S * 0.12 : base - S * 0.16) - S * 0.045, S * 0.022, S * 0.04, 0, 0, 7); x.fill(); }
+    } else if (kind === 'diya') {
+      x.fillStyle = '#000'; x.beginPath(); x.ellipse(0, S * 0.1, S * 0.38, S * 0.2, 0, 0, Math.PI); x.closePath(); x.fill(); x.beginPath(); x.moveTo(S * 0.3, S * 0.1); x.quadraticCurveTo(S * 0.5, S * 0.04, S * 0.46, -S * 0.04); x.quadraticCurveTo(S * 0.36, S * 0.02, S * 0.2, S * 0.08); x.closePath(); x.fill(); x.fillRect(-S * 0.16, S * 0.3, S * 0.32, S * 0.06);
+      x.fillStyle = '#fff'; for (let i = -3; i <= 3; i++) { x.beginPath(); x.arc(i * S * 0.1, S * 0.18 - Math.abs(i) * S * 0.02, S * 0.022, 0, 7); x.fill(); }
+      x.fillStyle = '#000'; x.beginPath(); x.moveTo(0, -S * 0.36); x.bezierCurveTo(S * 0.17, -S * 0.16, S * 0.12, S * 0.04, 0, S * 0.04); x.bezierCurveTo(-S * 0.12, S * 0.04, -S * 0.17, -S * 0.16, 0, -S * 0.36); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.ellipse(0, -S * 0.1, S * 0.04, S * 0.09, 0, 0, 7); x.fill();
+    } else if (kind === 'flower') {
+      x.beginPath(); x.moveTo(0, S * 0.1); x.quadraticCurveTo(S * 0.06, S * 0.3, 0, S * 0.48); x.stroke(); for (const sd of [-1, 1]) { x.fillStyle = '#000'; x.beginPath(); x.ellipse(sd * S * 0.13, S * 0.3, S * 0.12, S * 0.05, sd * -0.6, 0, 7); x.fill(); }
+      x.fillStyle = '#fff'; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; x.beginPath(); x.arc(Math.cos(a) * S * 0.2, -S * 0.12 + Math.sin(a) * S * 0.2, S * 0.14, 0, 7); x.fill(); x.stroke(); } x.fillStyle = '#000'; x.beginPath(); x.arc(0, -S * 0.12, S * 0.12, 0, 7); x.fill(); x.fillStyle = '#fff'; for (const [dx, dy] of [[-0.04, -0.15], [0.05, -0.1], [-0.01, -0.07]]) { x.beginPath(); x.arc(dx * S, dy * S, S * 0.015, 0, 7); x.fill(); }
+    } else if (kind === 'bear') {
+      x.fillStyle = '#fff'; for (const sd of [-1, 1]) { x.beginPath(); x.arc(sd * S * 0.27, -S * 0.22, S * 0.12, 0, 7); x.fill(); x.stroke(); x.fillStyle = '#000'; x.beginPath(); x.arc(sd * S * 0.27, -S * 0.22, S * 0.05, 0, 7); x.fill(); x.fillStyle = '#fff'; }
+      x.beginPath(); x.arc(0, S * 0.04, S * 0.36, 0, 7); x.fill(); x.stroke(); x.beginPath(); x.ellipse(0, S * 0.15, S * 0.15, S * 0.11, 0, 0, 7); x.fill(); x.stroke(); x.fillStyle = '#000'; x.beginPath(); x.ellipse(0, S * 0.1, S * 0.05, S * 0.035, 0, 0, 7); x.fill(); for (const sd of [-1, 1]) { x.beginPath(); x.arc(sd * S * 0.14, -S * 0.04, S * 0.035, 0, 7); x.fill(); } x.lineWidth = 2.5; x.beginPath(); x.moveTo(0, S * 0.13); x.lineTo(0, S * 0.18); x.moveTo(-S * 0.06, S * 0.21); x.quadraticCurveTo(0, S * 0.17, S * 0.06, S * 0.21); x.stroke();
+    } else if (kind === 'cap') {
+      x.fillStyle = '#000'; x.beginPath(); x.moveTo(-S * 0.46, -S * 0.1); x.lineTo(0, -S * 0.3); x.lineTo(S * 0.46, -S * 0.1); x.lineTo(0, S * 0.1); x.closePath(); x.fill(); x.beginPath(); x.moveTo(-S * 0.24, S * 0.0); x.lineTo(-S * 0.24, S * 0.18); x.quadraticCurveTo(0, S * 0.34, S * 0.24, S * 0.18); x.lineTo(S * 0.24, S * 0.0); x.lineTo(0, S * 0.12); x.closePath(); x.fill();
+      x.lineWidth = S * 0.025; x.beginPath(); x.moveTo(S * 0.4, -S * 0.08); x.lineTo(S * 0.4, S * 0.2); x.stroke(); x.beginPath(); x.moveTo(S * 0.4, S * 0.18); x.lineTo(S * 0.35, S * 0.34); x.lineTo(S * 0.45, S * 0.34); x.closePath(); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.arc(0, -S * 0.1, S * 0.03, 0, 7); x.fill();
+    } else { x.fillStyle = '#fff'; star(0, 0, S * 0.46); x.fill(); x.lineWidth = S / 14; x.stroke(); x.fillStyle = '#000'; star(0, 0, S * 0.18); x.fill(); }
+    x.restore();
+  }
+  function giftBorder(x, w, h, kind, rnd) {
+    x.save(); x.strokeStyle = '#000'; x.fillStyle = '#000'; x.lineJoin = x.lineCap = 'round';
+    const leaf = (px, py, a, L) => { x.save(); x.translate(px, py); x.rotate(a); x.beginPath(); x.moveTo(0, 0); x.quadraticCurveTo(L * 0.5, -L * 0.32, L, 0); x.quadraticCurveTo(L * 0.5, L * 0.32, 0, 0); x.fill(); x.restore(); };
+    const sprig = (px, py, a) => { for (const d of [-0.7, 0.7, 0]) leaf(px, py, a + d, 30); for (const [dx, dy] of [[0, 0], [7, 5], [-6, 6]]) { x.beginPath(); x.arc(px + dx, py + dy, 5, 0, 7); x.fill(); } };
+    const flake = (px, py, r) => { x.lineWidth = 2; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r); const bx = px + Math.cos(a) * r * 0.6, by = py + Math.sin(a) * r * 0.6; x.moveTo(bx, by); x.lineTo(bx + Math.cos(a + 0.8) * r * 0.3, by + Math.sin(a + 0.8) * r * 0.3); x.moveTo(bx, by); x.lineTo(bx + Math.cos(a - 0.8) * r * 0.3, by + Math.sin(a - 0.8) * r * 0.3); x.stroke(); } };
+    if (kind === 'holly') {
+      x.lineWidth = 4; x.strokeRect(10, 10, w - 20, h - 20); x.lineWidth = 1.5; x.strokeRect(17, 17, w - 34, h - 34);
+      sprig(18, 18, 0.7); sprig(w - 18, 18, Math.PI - 0.7); sprig(18, h - 18, -0.7); sprig(w - 18, h - 18, Math.PI + 0.7);
+      for (const f of [0.33, 0.5, 0.67]) { sprig(w * f, 12, Math.PI / 2 - 0.0 + Math.PI); sprig(w * f, h - 12, 0); }
+    } else if (kind === 'snow') {
+      x.lineWidth = 4; x.strokeRect(10, 10, w - 20, h - 20);
+      for (let i = 0; i < 26; i++) { const side = i % 4, t = rnd(), px = side < 2 ? 22 + t * (w - 44) : (side === 2 ? 22 : w - 22), py = side < 2 ? (side === 0 ? 24 : h - 24) : 22 + t * (h - 44); flake(px, py, 7 + rnd() * 7); }
+      for (const [fx, fy] of [[26, 26], [w - 26, 26], [26, h - 26], [w - 26, h - 26]]) flake(fx, fy, 15);
+    } else if (kind === 'cane') {
+      const bw = 18; x.save(); x.beginPath(); x.rect(0, 0, w, h); x.rect(bw, bw, w - 2 * bw, h - 2 * bw); x.clip('evenodd'); x.lineWidth = 7; for (let k = -h; k < w + h; k += 18) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k + h, h); x.stroke(); } x.restore(); x.lineWidth = 3; x.strokeRect(1.5, 1.5, w - 3, h - 3); x.strokeRect(bw, bw, w - 2 * bw, h - 2 * bw);
+    } else if (kind === 'confetti') {
+      x.lineWidth = 3; x.strokeRect(10, 10, w - 20, h - 20);
+      for (let i = 0; i < 90; i++) { const side = Math.floor(rnd() * 4), t = rnd(), off = 14 + rnd() * 14, px = side < 2 ? 14 + t * (w - 28) : (side === 2 ? off : w - off), py = side < 2 ? (side === 0 ? off : h - off) : 14 + t * (h - 28), k = Math.floor(rnd() * 4); x.save(); x.translate(px, py); x.rotate(rnd() * 6.3); x.lineWidth = 2.5; if (k === 0) { x.beginPath(); x.arc(0, 0, 3.5, 0, 7); x.fill(); } else if (k === 1) x.fillRect(-2, -5, 4, 10); else if (k === 2) { x.beginPath(); x.moveTo(0, -6); x.lineTo(5, 4); x.lineTo(-5, 4); x.closePath(); x.stroke(); } else { x.beginPath(); x.moveTo(-6, 0); x.quadraticCurveTo(-3, -5, 0, 0); x.quadraticCurveTo(3, 5, 6, 0); x.stroke(); } x.restore(); }
+    } else if (kind === 'hearts') {
+      x.lineWidth = 3; x.strokeRect(10, 10, w - 20, h - 20); const hp = (cx, cy, sc, fill) => { x.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40 * Math.PI * 2, hx = 16 * Math.pow(Math.sin(t), 3), hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t); x[i ? 'lineTo' : 'moveTo'](cx + hx * sc, cy - hy * sc + sc * 1.5); } x.closePath(); fill ? x.fill() : x.stroke(); };
+      let k = 0; for (let px = 26; px < w - 20; px += 30, k++) { hp(px, 21, 0.5, k % 2 === 0); hp(px, h - 22, 0.5, k % 2 === 1); } k = 0; for (let py = 56; py < h - 40; py += 30, k++) { hp(21, py, 0.5, k % 2 === 0); hp(w - 21, py, 0.5, k % 2 === 1); }
+    } else if (kind === 'bunting') {
+      x.lineWidth = 2; x.strokeRect(8, 52, w - 16, h - 60); x.beginPath(); x.moveTo(6, 8); x.quadraticCurveTo(w / 2, 40, w - 6, 8); x.stroke();
+      const n = Math.max(5, Math.round(w / 52)); for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, px = 6 + t * (w - 12), py = 8 + 2 * 0.5 * (1 - 0) * 0 + (1 - Math.pow(2 * t - 1, 2)) * 16; const a = px - 17, b = px + 17; x.beginPath(); x.moveTo(a, py - 2 + 0); x.lineTo(b, py - 2); x.lineTo(px, py + 40); x.closePath(); if (i % 2) x.stroke(); else x.fill(); }
+    } else if (kind === 'web') {
+      x.lineWidth = 3; x.strokeRect(10, 10, w - 20, h - 20); x.lineWidth = 1.6;
+      const corner = (cx, cy, sx, sy) => { for (const r of [20, 34, 48, 62]) { x.beginPath(); x.moveTo(cx + sx * r, cy); for (let k = 1; k <= 6; k++) { const a = k / 6 * Math.PI / 2, rr = r * (k % 2 ? 0.93 : 1); x.lineTo(cx + sx * Math.cos(a) * rr, cy + sy * Math.sin(a) * rr); } x.stroke(); } for (let k = 0; k <= 4; k++) { const a = k / 4 * Math.PI / 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + sx * Math.cos(a) * 64, cy + sy * Math.sin(a) * 64); x.stroke(); } };
+      corner(10, 10, 1, 1); corner(w - 10, 10, -1, 1); corner(10, h - 10, 1, -1); corner(w - 10, h - 10, -1, -1);
+      x.lineWidth = 1.5; x.beginPath(); x.moveTo(w - 92, 10); x.lineTo(w - 92, 34); x.stroke(); x.beginPath(); x.arc(w - 92, 41, 6, 0, 7); x.fill(); x.beginPath(); x.arc(w - 92, 52, 4, 0, 7); x.fill(); for (const sd of [-1, 1]) for (let k = 0; k < 4; k++) { x.beginPath(); x.moveTo(w - 92, 44); x.lineTo(w - 92 + sd * (8 + k * 2), 38 + k * 5); x.stroke(); }
+    } else if (kind === 'flowers') {
+      x.lineWidth = 3; x.strokeRect(10, 10, w - 20, h - 20); const fl = (cx, cy, r) => { x.fillStyle = '#fff'; for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; x.beginPath(); x.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, r * 0.7, 0, 7); x.fill(); x.lineWidth = 1.6; x.stroke(); } x.fillStyle = '#000'; x.beginPath(); x.arc(cx, cy, r * 0.5, 0, 7); x.fill(); };
+      for (let px = 30; px < w - 20; px += 42) { fl(px, 20, 5); fl(px + 21, h - 20, 5); x.beginPath(); x.ellipse(px + 21, 20, 8, 3, 0.4, 0, 7); x.fill(); x.beginPath(); x.ellipse(px, h - 20, 8, 3, -0.4, 0, 7); x.fill(); } for (let py = 52; py < h - 30; py += 42) { fl(20, py, 5); fl(w - 20, py + 21, 5); x.beginPath(); x.ellipse(20, py + 21, 3, 8, 0.4, 0, 7); x.fill(); x.beginPath(); x.ellipse(w - 20, py, 3, 8, -0.4, 0, 7); x.fill(); }
+    } else { x.lineWidth = 5; x.strokeRect(8, 8, w - 16, h - 16); x.lineWidth = 2; x.strokeRect(16, 16, w - 32, h - 32); x.font = '700 18px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; for (const [fx, fy] of [[26, 26], [w - 26, 26], [26, h - 26], [w - 26, h - 26]]) x.fillText('★', fx, fy); }
+    x.restore();
+  }
+  function giftTag(to, from, msg, o) {
+    const SERIF = 'Georgia, "Times New Roman", serif', land = o.layout === 'wide', w = land ? 560 : W, hh = land ? W : 0, m = cvs(10, 10).getContext('2d');
+    const fit = (txt, wt, max, maxW, min = 14) => { let sz = max; for (; sz > min; sz -= 2) { m.font = `${wt} ${sz}px ${SERIF}`; if (m.measureText(txt).width <= maxW) break; } return sz; };
+    const textW = land ? w - 250 : w - 70, tsz = fit(to, 900, land ? 78 : 62, textW), fsz = fit(from, 800, 30, textW - 70);
+    const mlines = msg ? (() => { m.font = `italic 600 20px ${SERIF}`; return wrapLines(m, msg, textW); })().slice(0, 2) : [];
+    const h = land ? hh : 168 + tsz + 40 + (from ? 52 : 0) + mlines.length * 26 + 56;
+    const rand = rng(Array.from(to + from).reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 11)), page2 = cvs(w, h), x = page2.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.fillStyle = '#000'; x.strokeStyle = '#000'; giftBorder(x, w, h, o.border, rand);
+    x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    const cx = land ? 120 : w / 2, tx = land ? 250 + textW / 2 - 6 : w / 2;
+    x.save(); x.fillStyle = '#fff'; if (o.border !== 'plain') { x.beginPath(); x.arc(cx, land ? h / 2 : 98, land ? 78 : 60, 0, 7); x.fill(); } x.restore(); giftIcon(x, cx, land ? h / 2 : 100, land ? 128 : 96, o.icon);
+    let y = land ? h / 2 - tsz * 0.1 - (from ? 30 : 6) - mlines.length * 8 : 176; x.fillStyle = '#000';
+    x.font = `800 17px ${SERIF}`; x.letterSpacing = '6px'; x.fillText('TO', tx + 3, y); x.letterSpacing = '0px'; y += tsz * 0.92 + 8;
+    x.font = `900 ${tsz}px ${SERIF}`; x.fillText(to, tx, y); y += 20;
+    if (from) { x.lineWidth = 2; x.beginPath(); x.moveTo(tx - 70, y); x.lineTo(tx - 10, y); x.moveTo(tx + 10, y); x.lineTo(tx + 70, y); x.stroke(); x.beginPath(); x.moveTo(tx, y - 5); x.lineTo(tx + 5, y); x.lineTo(tx, y + 5); x.lineTo(tx - 5, y); x.closePath(); x.fill(); y += 26; x.font = `800 15px ${SERIF}`; x.letterSpacing = '5px'; x.fillText('FROM', tx + 2, y); x.letterSpacing = '0px'; y += fsz * 0.95 + 4; x.font = `italic 800 ${fsz}px ${SERIF}`; x.fillText(from, tx, y); y += 12; }
+    x.font = `italic 600 20px ${SERIF}`; mlines.forEach((l, i) => x.fillText(l, tx, y + 18 + i * 26));
+    if (o.hole) { x.save(); x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.lineWidth = 2.5; x.setLineDash([4, 4]); x.beginPath(); if (land) x.arc(34, h / 2, 12, 0, 7); else x.arc(w / 2, 32, 11, 0, 7); x.fill(); x.stroke(); x.restore(); }
+    let out = page2;
+    if (land) { const r = cvs(h, w), rx = r.getContext('2d'); rx.fillStyle = '#fff'; rx.fillRect(0, 0, h, w); rx.translate(0, w); rx.rotate(-Math.PI / 2); rx.drawImage(page2, 0, 0); out = r; }
+    return { bits: Prt.canvasBits(out), h: out.height, canvas: out };
+  }
+
   // ---------------- strip footer (also used by Shots.strip) ----------------
   function stripFooter() {
     const f = saved.footer || { date: true, caption: '', qr: '' }, parts = [];
@@ -507,19 +656,39 @@ const Make = (() => {
     },
     ansi: {
       title: '💾 ANSI / BBS art',
-      html: () => sel('art', 'Art', [['bbs', 'GB CatCam BBS screen'], ['cat', 'Cat'], ['plasma', 'Plasma'], ['copper', 'Copper bars'], ['file', 'My own .ANS file']], 'bbs')
-        + `<div class="row"><button name="open" type="button">📂 Open an .ANS file…</button><input name="file" type="file" hidden></div><div class="sub" name="fname"></div>`
+      html: () => sel('art', 'Art', [['bbs', 'GB CatCam BBS screen'], ['cat', 'Cat'], ['plasma', 'Plasma'], ['copper', 'Copper bars'], ['nfo', 'Release NFO (text file with block art)'], ['file', 'My own .ANS / .NFO file']], 'bbs')
+        + `<div class="row"><button name="open" type="button">📂 Open an .ANS or .NFO file…</button><input name="file" type="file" hidden></div><div class="sub" name="fname"></div>`
         + sel('dir', 'Print as', [['side', 'Sideways, real size (turn the paper to read)'], ['up', 'Upright, shrunk to fit the paper']], 'side') + sel('look', 'Colours', [['screen', 'Screen look (like the monitor, black background)'], ['paper', 'Light paper (negative, uses much less ink)']], 'screen')
         + `<div class="sub">Sideways prints an 80×24 screen at exactly 1:1 pixels; taller art comes out as several strips to tape together. Find more art at <a href="https://16colo.rs" target="_blank" rel="noopener" style="color:var(--acc)">16colo.rs ↗</a>, download an .ANS file and open it here. Art on that site belongs to its artists, so keep it to personal printing and credit them.</div>`,
       async build(r, v) {
         await Ansi.ready(); let doc;
-        if (v('art').value === 'file') { if (!ansiDoc) throw new Error('Tap “Open an .ANS file…” and pick one you downloaded.'); doc = ansiDoc; } else doc = Ansi.ART[v('art').value]();
-        return Ansi.toBits(doc, { dir: v('dir').value, look: v('look').value });
+        if (v('art').value === 'file') { if (!ansiDoc) throw new Error('Tap “Open an .ANS or .NFO file…” and pick one you downloaded.'); doc = ansiDoc; } else doc = Ansi.ART[v('art').value]();
+        return Ansi.toBits(doc, { dir: v('dir').value, look: v('look').value, crisp: v('dir').value === 'up' && Ansi.isTextLike(doc) });
       },
       init(r) {
         const f = r.querySelector('[name=file]'), note = r.querySelector('[name=fname]');
         r.querySelector('[name=open]').onclick = () => f.click();
-        f.onchange = async () => { const file = f.files[0]; if (!file) return; try { ansiDoc = Ansi.parse(new Uint8Array(await file.arrayBuffer())); note.textContent = `${file.name}: ${ansiDoc.cols}×${ansiDoc.rows}` + (ansiDoc.sauce && ansiDoc.sauce.author ? ` by ${ansiDoc.sauce.author}` : ''); r.querySelector('[name=art]').value = 'file'; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that file', 'bad'); } f.value = ''; };
+        const setFor = (kind) => { const text = kind === 'nfo' || kind === 'text'; r.querySelector('[name=dir]').value = text ? 'up' : 'side'; r.querySelector('[name=look]').value = text ? 'paper' : 'screen'; }; // text files: one upright print, dark on white; art: real-size sideways
+        r.querySelector('[name=art]').addEventListener('change', e => { setFor(e.target.value === 'file' ? (ansiKind || 'art') : e.target.value); });
+        f.onchange = async () => { const file = f.files[0]; if (!file) return; try { ansiKind = /\.(nfo|txt|diz|asc|me|1st)$/i.test(file.name) ? 'text' : 'art'; setFor(ansiKind); ansiDoc = Ansi.parse(new Uint8Array(await file.arrayBuffer())); note.textContent = `${file.name}: ${ansiDoc.cols}×${ansiDoc.rows}` + (ansiDoc.sauce && ansiDoc.sauce.author ? ` by ${ansiDoc.sauce.author}` : ''); r.querySelector('[name=art]').value = 'file'; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that file', 'bad'); } f.value = ''; };
+      },
+    },
+    gift: {
+      title: '🎁 Gift tags',
+      html: () => sel('occasion', 'Occasion', GIFT_OCC.map(o => [o.id, o.name]), 'christmas') + field('to', 'To (one name per line makes one tag each)', 'textarea', 'Grandma\nUncle Joe\nMaya', 'rows="4"') + field('from', 'From', 'text', 'Alan', 'maxlength="24"') + field('msg', 'Message (optional)', 'text', 'Merry Christmas!', 'maxlength="40"')
+        + sel('border', 'Border', [['holly', 'Holly sprigs'], ['snow', 'Snowflakes'], ['cane', 'Candy cane stripes'], ['confetti', 'Confetti'], ['hearts', 'Hearts'], ['bunting', 'Bunting flags'], ['web', 'Cobwebs'], ['flowers', 'Flowers'], ['plain', 'Plain with stars']], 'holly')
+        + sel('icon', 'Picture', [['tree', 'Christmas tree'], ['snowman', 'Snowman'], ['cane', 'Candy cane'], ['bauble', 'Bauble'], ['present', 'Present'], ['star', 'Star'], ['cake', 'Birthday cake'], ['balloons', 'Balloons'], ['pumpkin', 'Pumpkin'], ['ghost', 'Ghost'], ['bat', 'Bat'], ['egg', 'Easter egg'], ['bunny', 'Bunny'], ['heart', 'Heart'], ['rings', 'Wedding rings'], ['bear', 'Teddy bear'], ['menorah', 'Menorah'], ['diya', 'Diya lamp'], ['flower', 'Flower'], ['cap', 'Graduation cap']], 'tree')
+        + sel('layout', 'Shape', [['tall', 'Tag (upright)'], ['wide', 'Wide label (turn the paper)']], 'tall') + chk('hole', 'Dotted circle to punch a hole for string', true)
+        + `<div class="sub">Pick an occasion and the border, picture and message change to match; you can still change any of them. Add “Name | From” on a line to give one person a different sender, for example “Grandma | Santa”. Up to 12 tags at once, printed one after another with a cut line between them.</div>`,
+      init(r) {
+        const q = n => r.querySelector('[name=' + n + ']');
+        q('occasion').addEventListener('change', () => { const o = GIFT_OCC.find(x => x.id === q('occasion').value); if (!o) return; const prev = new Set(GIFT_OCC.map(x => x.msg)); q('border').value = o.border; q('icon').value = o.icon; if (!q('msg').value.trim() || prev.has(q('msg').value.trim())) q('msg').value = o.msg; r.dispatchEvent(new Event('input', { bubbles: true })); });
+      },
+      build(r, v) {
+        const lines = v('to').value.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 12); if (!lines.length) throw new Error('Type at least one name.');
+        const o = { border: v('border').value, icon: v('icon').value, layout: v('layout').value, hole: v('hole').checked }, parts = [];
+        lines.forEach((l, i) => { const [to, fr] = l.split('|').map(t => t.trim()); if (i) parts.push(gapRow()); parts.push(giftTag(to, fr == null || fr === '' ? v('from').value.trim() : fr, v('msg').value.trim(), o)); });
+        parts.push(Prt.blank(6)); return Prt.stack(parts);
       },
     },
     scroll: {
