@@ -151,14 +151,18 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 /* printer health */
 .hp{background:var(--panel);border-radius:12px;padding:12px;margin:10px 0}.hpline{font-weight:700}
 .hpgauge{height:12px;background:#2f353d;border-radius:6px;overflow:hidden;margin:8px 0 4px}.hpgauge i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s}.hpgauge i.warn{background:#f0b429}.hpgauge i.bad{background:var(--bad)}
+.fcrow{display:block;padding:6px 2px;font-size:15px}.fcrow input{margin-right:6px}
+#pstop{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);z-index:60;background:#c0392b;border:0;color:#fff;font-weight:800;padding:14px 22px;border-radius:30px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+#mkpartbox{background:var(--panel);border-radius:12px;padding:8px 12px;margin:6px 0}#mkpartbox .ctl{display:flex;align-items:center;gap:10px;margin:4px 0}#mkpartbox .ctl span{flex:0 0 44px}#mkpartbox input[type=range]{flex:1}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v50</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v52</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
 <div id="stage"><canvas id="view" width="384" height="336"></canvas><div id="hint">Starting camera…</div><div id="count" hidden></div></div>
 <div id="prog"><i></i></div>
+<button id="pstop" type="button" hidden>⏹ Stop printing</button>
 <div class="row" id="shutterrow">
   <button id="flip">⟲ Flip</button>
   <button id="shutter" class="pri" aria-label="Shutter">●</button>
@@ -329,10 +333,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=50"></script>
-<script src="fx.js?v=50"></script>
-<script src="fx2.js?v=50"></script>
-<script src="goo.js?v=50"></script>
+<script src="gbc.js?v=52"></script>
+<script src="fx.js?v=52"></script>
+<script src="fx2.js?v=52"></script>
+<script src="goo.js?v=52"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -453,7 +457,10 @@ async function bleSend(packets,c,onprog){
         throw e}
     }
   };
-  for(const p of packets){
+  let stoppedAt=null;
+  for(let pi=0;pi<packets.length;pi++){
+    if(ble.abort&&stoppedAt==null&&pi>=4&&pi<packets.length-3){stoppedAt=pi;pi=packets.length-4;continue} // skip the remaining rows, still send feed + end
+    const p=packets[pi];
     for(let o=0;o<p.length;o+=chunk){
       const part=p.slice(o,o+chunk);
       try{await write(part)}
@@ -463,9 +470,10 @@ async function bleSend(packets,c,onprog){
     }
     let t=0;while(ble.paused&&t<3000){await sleep(20);t+=20}
     if(c.delay)await sleep(c.delay);
-    onprog&&onprog(++i/packets.length)}
+    onprog&&onprog((pi+1)/packets.length)}
+  return stoppedAt;
 }
-async function mockSend(packets,c,onprog){let i=0;for(const p of packets){mock.sent.push(p);if(i<8||i>=packets.length-4)log('>',[...p.slice(0,16)].map(b=>b.toString(16).padStart(2,'0')).join(' ')+(p.length>16?' …('+p.length+')':''));if(c.delay)await sleep(1);onprog&&onprog(++i/packets.length)}}
+async function mockSend(packets,c,onprog){let stoppedAt=null;for(let i=0;i<packets.length;i++){if(ble.abort&&stoppedAt==null&&i>=4&&i<packets.length-3){stoppedAt=i;i=packets.length-4;continue}const p=packets[i];mock.sent.push(p);if(i<8||i>=packets.length-4)log('>',[...p.slice(0,16)].map(b=>b.toString(16).padStart(2,'0')).join(' ')+(p.length>16?' …('+p.length+')':''));if(c.delay)await sleep(c.delay>5?c.delay:5);onprog&&onprog((i+1)/packets.length)}return stoppedAt}
 const mock={sent:[]};
 function setStatus(t,ok){const s=$('status');s.textContent=t;s.className=ok?'ok':''}
 
@@ -555,26 +563,26 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=50"></script>
-<script src="overlay.js?v=50"></script>
-<script src="shots.js?v=50"></script>
-<script src="album.js?v=50"></script>
-<script src="printables.js?v=50"></script>
-<script src="logo.js?v=50"></script>
-<script src="origami.js?v=50"></script>
-<script src="ansi.js?v=50"></script>
-<script src="ansidraw.js?v=50"></script>
-<script src="vendor/qrcode.js?v=50"></script>
-<script src="make.js?v=50"></script>
-<script src="gb.js?v=50"></script>
-<script src="gbui.js?v=50"></script>
-<script src="spectrum/z80.js?v=50"></script>
-<script src="spectrum/basic.js?v=50"></script>
-<script src="spectrum/spectrum.js?v=50"></script>
-<script src="spectrum/files.js?v=50"></script>
-<script src="spectrum/zxui.js?v=50"></script>
-<script src="health.js?v=50"></script>
-<script src="kid.js?v=50"></script>
-<script src="swipe.js?v=50"></script>
+<script src="print.js?v=52"></script>
+<script src="overlay.js?v=52"></script>
+<script src="shots.js?v=52"></script>
+<script src="album.js?v=52"></script>
+<script src="printables.js?v=52"></script>
+<script src="logo.js?v=52"></script>
+<script src="origami.js?v=52"></script>
+<script src="ansi.js?v=52"></script>
+<script src="ansidraw.js?v=52"></script>
+<script src="vendor/qrcode.js?v=52"></script>
+<script src="make.js?v=52"></script>
+<script src="gb.js?v=52"></script>
+<script src="gbui.js?v=52"></script>
+<script src="spectrum/z80.js?v=52"></script>
+<script src="spectrum/basic.js?v=52"></script>
+<script src="spectrum/spectrum.js?v=52"></script>
+<script src="spectrum/files.js?v=52"></script>
+<script src="spectrum/zxui.js?v=52"></script>
+<script src="health.js?v=52"></script>
+<script src="kid.js?v=52"></script>
+<script src="swipe.js?v=52"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

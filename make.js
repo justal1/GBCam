@@ -575,6 +575,50 @@ const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0
   const gather = r => { const o = {}; r.querySelectorAll('[name]').forEach(e => { if (e.type === 'file' || e.tagName === 'BUTTON') return; o[e.name] = e.type === 'checkbox' ? e.checked : e.value; }); return o; };
   const groupSync = r => { const w = r.querySelector('[name=what]').value; r.querySelectorAll('[data-g]').forEach(g => { g.hidden = !g.dataset.g.split(' ').includes(w); }); };
 
+
+  // ---------------- Wikipedia flash cards ----------------
+  const flash = { items: [], q: '' };
+  const cleanText = t => String(t || '').replace(/\s*\([^()]*\)/g, '').replace(/\s*\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+  const clip = (t, max) => { t = cleanText(t); if (t.length <= max) return t; const parts = t.split(/(?<=[.!?])\s+(?=[A-Z0-9"])/); let out = ''; for (const p of parts) { if (out && (out + ' ' + p).length > max) break; out = out ? out + ' ' + p : p; } return out.length > max ? out.slice(0, max - 1).replace(/\s+\S*$/, '') + '…' : out; };
+  async function wikiFind(term, n, exact) {
+    const base = 'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=extracts|pageimages&exintro=1&explaintext=1&exlimit=20&piprop=thumbnail&pithumbsize=420&';
+    const u = exact ? base + 'titles=' + encodeURIComponent(term.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 20).join('|')) : base + 'generator=search&gsrnamespace=0&gsrlimit=' + n + '&gsrsearch=' + encodeURIComponent(term);
+    const res = await fetch(u); if (!res.ok) throw new Error('Wikipedia said HTTP ' + res.status);
+    const j = await res.json(), pages = j.query ? Object.values(j.query.pages) : [];
+    if (!exact) pages.sort((a, b) => a.index - b.index);
+    return pages.filter(pg => !pg.missing && pg.extract && !/may refer to|disambiguation/i.test(pg.extract.slice(0, 200))).map(pg => ({ title: pg.title, text: pg.extract, thumb: pg.thumbnail && pg.thumbnail.source, on: true }));
+  }
+  async function flashImage(it) {
+    if (it.bmp !== undefined) return it.bmp; it.bmp = null; if (!it.thumb) return null;
+    try { const r = await fetch(it.thumb); if (!r.ok) throw 0; it.bmp = await createImageBitmap(await r.blob()); } catch (e) { it.bmp = null; } return it.bmp;
+  }
+  const maskTitle = (t, title) => { let out = t; for (const w of title.split(/\s+/).filter(w => w.length > 3)) out = out.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '_____'); return out; };
+  function flashPicture(bmp, tall, method) { const hh = tall, c = cvs(384, hh), x = c.getContext('2d'), k = Math.max(384 / bmp.width, hh / bmp.height); x.fillStyle = '#fff'; x.fillRect(0, 0, 384, hh); x.imageSmoothingQuality = 'high'; x.drawImage(bmp, (384 - bmp.width * k) / 2, (hh - bmp.height * k) / 2, bmp.width * k, bmp.height * k); return createImageBitmap(c).then(b => { const bits = ditherBitmap(b, { fit: 'width', method }); const o = cvs(W, bits.h), ox = o.getContext('2d'), id = ox.createImageData(W, bits.h); for (let i = 0; i < bits.length; i++) { const v = bits[i] ? 0 : 255; id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255; } ox.putImageData(id, 0, 0); return o; }); }
+  async function flashCard(it, o, side, n, total) {
+    const SER = 'Georgia, "Times New Roman", serif', m = cvs(10, 10).getContext('2d'), quiz = o.style === 'quiz', front = quiz && side === 'front';
+    const body = clip(it.text, o.len), shown = front ? maskTitle(body, it.title) : body, withPic = o.pics && it.thumb;
+    let pic = null; if (withPic) { const bmp = await flashImage(it); if (bmp) pic = await flashPicture(bmp, o.picH, o.method); }
+    m.font = `500 19px ${SER}`; const tl = wrapLines(m, shown, W - 32), ts = it.title.length > 20 ? 26 : 32; m.font = `900 ${ts}px ${FONT}`; const hl = front ? ['? ? ?'] : wrapLines(m, it.title, W - 32).slice(0, 3);
+    const bandH = 12 + hl.length * (ts + 6) + 12, h = bandH + (pic ? pic.height + 12 : 12) + tl.length * 26 + 14 + 22, c = cvs(W, h), x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, h); x.fillStyle = '#000'; x.fillRect(0, 0, W, bandH); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = `900 ${ts}px ${FONT}`; hl.forEach((l, i) => x.fillText(l, W / 2, 12 + ts / 2 + i * (ts + 6) + 2));
+    if (total > 1) { x.font = `800 13px ${FONT}`; x.textAlign = 'right'; x.fillText((quiz ? (front ? 'Q ' : 'A ') : '') + n + '/' + total, W - 8, 11); }
+    let y = bandH; if (pic) { x.drawImage(pic, 0, y + 6); y += pic.height + 12; } else y += 12;
+    x.fillStyle = '#000'; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.font = `500 19px ${SER}`; tl.forEach((l, i) => x.fillText(l, 16, y + 20 + i * 26)); y += tl.length * 26 + 14;
+    x.font = `500 11px ${FONT}`; x.textAlign = 'right'; x.fillText('Wikipedia · CC BY-SA', W - 10, y + 12); if (front) { x.textAlign = 'left'; x.font = `700 12px ${FONT}`; x.fillText('Who or what is this?', 12, y + 12); }
+    return c;
+  }
+  const flashGap = label => { const c = cvs(W, 32), x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, 32); x.fillStyle = '#000'; x.setLineDash([7, 6]); x.lineWidth = 2; x.beginPath(); x.moveTo(8, 16); x.lineTo(W - 8, 16); x.stroke(); if (label) { x.setLineDash([]); x.fillStyle = '#fff'; const w = 150; x.fillRect((W - w) / 2, 6, w, 20); x.fillStyle = '#000'; x.font = `800 12px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(label, W / 2, 17); } return c; };
+  function flashInit(r) {
+    const q = n => r.querySelector('[name=' + n + ']'); const status = t => { q('status').textContent = t || ''; };
+    const draw = () => { const l = q('list'); l.innerHTML = ''; flash.items.forEach((it, i) => { const lab = document.createElement('label'); lab.className = 'fcrow'; const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = it.on; cb.onchange = () => { it.on = cb.checked; r.dispatchEvent(new Event('input', { bubbles: true })); }; lab.append(cb, ' ' + it.title + (it.thumb ? ' 🖼' : '')); l.appendChild(lab); }); };
+    q('go').onclick = async () => {
+      const term = q('q').value.trim(); if (!term) { status('Type a subject first, like volcanoes or Romans.'); return; } status('Looking on Wikipedia…'); q('go').disabled = true;
+      try { const exact = q('find').value === 'titles'; flash.items = await wikiFind(term, +q('n').value, exact); draw(); status(flash.items.length ? `Found ${flash.items.length}. Untick any you do not want.` : 'Nothing found. Try another word.'); r.dispatchEvent(new Event('input', { bubbles: true })); }
+      catch (e) { status('Search failed: ' + e.message + ' (this needs an internet connection)'); } finally { q('go').disabled = false; }
+    };
+    q('q').addEventListener('keydown', e => { if (e.key === 'Enter' && q('find').value !== 'titles') { e.preventDefault(); q('go').click(); } });
+  }
+
   // ---------------- strip footer (also used by Shots.strip) ----------------
   function stripFooter() {
     const f = saved.footer || { date: true, caption: '', qr: '' }, parts = [];
@@ -836,6 +880,29 @@ const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0
       init(r) { r.querySelector('[name=what]').addEventListener('change', () => groupSync(r)); groupSync(r); },
       build(r) { const o = gather(r), c = Printables.build(o.what, o); return { bits: Prt.canvasBits(c), h: c.height, canvas: c }; },
     },
+    flash: {
+      title: '📚 Wikipedia cards',
+      html: () => sel('find', 'Find', [['topics', 'Topics about a subject (e.g. volcanoes)'], ['titles', 'Exact articles (one per line)']], 'topics')
+        + field('q', 'Subject', 'textarea', 'Volcanoes', 'rows="2" maxlength="300" placeholder="e.g. Volcanoes, Roman Empire, Black holes"')
+        + sel('n', 'How many cards', [['4', '4'], ['6', '6'], ['8', '8'], ['12', '12'], ['20', '20']], '6')
+        + `<div class="row"><button name="go" type="button" class="pri">🔍 Find cards</button></div><div name="status" class="sub"></div><div name="list"></div>`
+        + sel('style', 'Card style', [['fact', 'Fact card (title, picture, facts)'], ['quiz', 'Quiz pair (question side + answer side)']], 'fact')
+        + sel('lenk', 'Amount of text', [['s', 'Short (a sentence or two)'], ['m', 'Medium'], ['l', 'Long (a paragraph)']], 'm')
+        + chk('pics', 'Include pictures', true) + sel('pk', 'Picture height', [['150', 'Small'], ['200', 'Medium'], ['260', 'Large']], '200') + sel('method', 'Picture look', [['fs', 'Photo (smooth dots)'], ['bayer', 'Newspaper (regular dots)']], 'fs')
+        + `<div class="sub">Search results come straight from Wikipedia, so it needs an internet connection. Text is under the CC BY-SA licence, which is why each card says so. Quiz pairs hide the answer word in the question text: print them, cut them apart and test each other.</div>`,
+      async build(r, v) {
+        const picks = flash.items.filter(i => i.on); if (!picks.length) throw new Error('Type a subject and tap “Find cards”.');
+        const o = { style: v('style').value, len: { s: 170, m: 340, l: 640 }[v('lenk').value], pics: v('pics').checked, picH: +v('pk').value, method: v('method').value }, parts = [];
+        for (let i = 0; i < picks.length; i++) {
+          if (i) parts.push({ canvas: flashGap(''), cut: true });
+          if (o.style === 'quiz') { parts.push({ canvas: await flashCard(picks[i], o, 'front', i + 1, picks.length) }); parts.push({ canvas: flashGap('✂ fold or cut') }); parts.push({ canvas: await flashCard(picks[i], o, 'back', i + 1, picks.length) }); }
+          else parts.push({ canvas: await flashCard(picks[i], o, 'back', i + 1, picks.length) });
+        }
+        const total = parts.reduce((n, p) => n + p.canvas.height, 0), c = cvs(W, total), x = c.getContext('2d'); let y = 0; for (const p of parts) { x.drawImage(p.canvas, 0, y); y += p.canvas.height; }
+        return { bits: Prt.canvasBits(c), h: total, canvas: c };
+      },
+      init(r) { flashInit(r); },
+    },
     scroll: {
       title: '📜 Scroll message',
       html: () => field('head', 'Title', 'text', 'HEAR YE!', 'maxlength="30"') + field('msg', 'Message', 'textarea', 'You are hereby invited to tea and cake.', 'rows="4"') + sel('size', 'Text size', [['22', 'Small'], ['28', 'Medium'], ['36', 'Large']], '28')
@@ -914,8 +981,9 @@ const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0
   const bar = document.createElement('div'); bar.id = 'mkbar';
   bar.innerHTML = `<div id="mkmeta" class="sub"></div>
     <div class="row"><div id="mkcopies" role="group" aria-label="Copies"><button id="mkminus" aria-label="Fewer copies">−</button><output id="mkn">1</output><button id="mkplus" aria-label="More copies">+</button></div><button id="mkprint" class="pri">🖨 Print</button></div>
-    <div class="row"><button id="mknew" hidden>🔀 New</button><button id="mkext" hidden>🖨 Answer</button><button id="mksave">💾 PNG</button><button id="mkshare">↗ Share</button><button id="mklast" title="Print the last thing again">↻ Last</button></div>`;
-  const prev = document.createElement('div'); prev.id = 'mkprev'; prev.innerHTML = '<div id="mkpaper"><canvas></canvas></div><div id="mkerr" hidden></div>';
+    <div class="row"><button id="mknew" hidden>🔀 New</button><button id="mkext" hidden>🖨 Answer</button><button id="mksave">💾 PNG</button><button id="mkshare">↗ Share</button><button id="mklast" title="Print the last thing again">↻ Last</button></div>
+    <div class="row"><button id="mkpart" title="Print only part of it">✂ Part</button><button id="mkrest" hidden>▶ Print the rest</button></div>`;
+  const prev = document.createElement('div'); prev.id = 'mkprev'; prev.innerHTML = '<div id="mkpartbox" hidden><div id="mkpartinfo" class="sub" style="margin:0 0 4px"></div><div class="ctl"><span>From</span><input id="mkpa" type="range" min="0" max="100" value="0"></div><div class="ctl"><span>To</span><input id="mkpb" type="range" min="0" max="100" value="100"></div><div class="row"><button id="mkpall">Whole thing</button><button id="mkp1">First half</button><button id="mkp2">Second half</button></div></div><div id="mkpaper"><canvas></canvas></div><div id="mkerr" hidden></div>';
   const chips = document.createElement('div'); chips.id = 'mkchips';
   const stage = document.createElement('div'); stage.id = 'mkpanels';
 
@@ -928,20 +996,35 @@ const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0
     try {
       const s = await current(true); if (tok !== st.tok) return;
       st.res = s; $('mkerr').hidden = true; $('mkpaper').hidden = false;
-      const c = prev.querySelector('canvas'); const b = Prt.bitsCanvas(s.bits); c.width = b.width; c.height = b.height; c.getContext('2d').drawImage(b, 0, 0);
-      setBar(s);
+      syncPart(s); paintPreview(); setBar(s);
     } catch (e) { if (tok !== st.tok) return; st.res = null; $('mkpaper').hidden = true; $('mkerr').hidden = false; $('mkerr').textContent = '⚠ ' + e.message; setBar(null); }
   }
   function setBar(s) {
     const k = st.kind; $('mknew').hidden = !RANDOM.includes(k); $('mkext').hidden = !(s && s.extra);
     const draw = !!KINDS[k].noPreview; $('mkprint').disabled = !draw && !s; $('mksave').disabled = !draw && !s; $('mkshare').disabled = !draw && !s;
     $('mkmeta').textContent = s ? `${s.h} dots long ≈ ${(s.h / 8 / 10).toFixed(1)} cm of paper${st.copies > 1 ? ' × ' + st.copies : ''}` : '';
-    $('mklast').disabled = !Prt.last;
+    $('mklast').disabled = !Prt.last; $('mkrest').hidden = !Prt.rest; $('mkpart').hidden = !!KINDS[k].noPreview; if (KINDS[k].noPreview) { part.on = false; $('mkpartbox').hidden = true; }
+    if (s && part.on) { const [r0, r1] = partRows(); $('mkmeta').textContent = `Part: ${((r1 - r0) / 80).toFixed(1)} cm of ${(s.h / 80).toFixed(1)} cm${st.copies > 1 ? ' × ' + st.copies : ''}`; }
   }
   const later = () => { clearTimeout(st.timer); st.timer = setTimeout(refresh, 260); };
 
+
+  // ---- print only part of it: sliders in mm, snapped to blank rows so cuts fall between items ----
+  const part = { on: false, h: -1 };
+  const blankFlags = s => s.blank || (s.blank = (() => { const n = s.bits.length / W, f = new Uint8Array(n); for (let y = 0; y < n; y++) { let ink = 0; for (let x = 0; x < W; x++) if (s.bits[y * W + x]) { ink = 1; break; } f[y] = ink ? 0 : 1; } return f; })());
+  const snapRow = (s, r) => { const n = s.bits.length / W; if (r <= 0) return 0; if (r >= n) return n; const f = blankFlags(s); for (let d = 0; d <= 90; d++) { if (r - d > 0 && f[r - d]) return r - d; if (r + d < n && f[r + d]) return r + d; } return r; };
+  function partRows() { const s = st.res, n = s.bits.length / W, a = +$('mkpa').value, b = +$('mkpb').value; let r0 = snapRow(s, a * 8), r1 = b >= Math.floor(n / 8) ? n : snapRow(s, b * 8); if (r1 - r0 < 8) r1 = Math.min(n, r0 + 16); return [r0, r1]; }
+  function syncPart(s) { const mm = Math.floor(s.bits.length / W / 8); if (part.h !== s.bits.length) { part.h = s.bits.length; for (const id of ['mkpa', 'mkpb']) $(id).max = mm; $('mkpa').value = 0; $('mkpb').value = mm; } }
+  function paintPreview() {
+    const s = st.res; if (!s) return; const c = prev.querySelector('canvas'), b = Prt.bitsCanvas(s.bits); c.width = b.width; c.height = b.height; const x = c.getContext('2d'); x.drawImage(b, 0, 0);
+    if (part.on) { const [r0, r1] = partRows(), n = c.height; x.fillStyle = 'rgba(25,28,34,.78)'; x.fillRect(0, 0, c.width, r0); x.fillRect(0, r1, c.width, n - r1); x.fillStyle = '#e8392b'; if (r0 > 0) x.fillRect(0, r0 - 1, c.width, 3); if (r1 < n) x.fillRect(0, r1 - 1, c.width, 3); $('mkpartinfo').textContent = `Prints ${(r0 / 80).toFixed(1)} cm to ${(r1 / 80).toFixed(1)} cm: ${((r1 - r0) / 80).toFixed(1)} cm of ${(n / 80).toFixed(1)} cm. Cuts snap to blank gaps. The dim parts will not print.`; }
+    setBar(s);
+  }
+  const partBits = bits => { if (!part.on || !st.res) return bits; const [r0, r1] = partRows(); return bits.slice(r0 * W, r1 * W); };
+
   async function bitsFor(withCopies) {
-    const s = KINDS[st.kind].noPreview ? await current() : st.res; if (!s) throw new Error('Nothing to print yet.');
+    const s0 = KINDS[st.kind].noPreview ? await current() : st.res; if (!s0) throw new Error('Nothing to print yet.');
+    const s = part.on && !KINDS[st.kind].noPreview ? (() => { const b = partBits(s0.bits); return { bits: b, h: b.length / W }; })() : s0;
     if (!withCopies || st.copies < 2) return s.bits;
     const parts = []; for (let i = 0; i < st.copies; i++) { if (i) parts.push(gapRow()); parts.push(s); } return Prt.stack(parts).bits;
   }
@@ -961,6 +1044,12 @@ const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0
     $('mkminus').onclick = () => { st.copies = Math.max(1, st.copies - 1); $('mkn').textContent = st.copies; setBar(st.res); };
     $('mkplus').onclick = () => { st.copies = Math.min(8, st.copies + 1); $('mkn').textContent = st.copies; setBar(st.res); };
     $('mknew').onclick = refresh;
+    $('mkpart').onclick = () => { part.on = !part.on; $('mkpartbox').hidden = !part.on; $('mkpart').classList.toggle('on', part.on); if (st.res) paintPreview(); };
+    for (const id of ['mkpa', 'mkpb']) $(id).oninput = () => { if (+$('mkpb').value <= +$('mkpa').value + 3) { if (id === 'mkpa') $('mkpb').value = Math.min(+$('mkpb').max, +$('mkpa').value + 4); else $('mkpa').value = Math.max(0, +$('mkpb').value - 4); } paintPreview(); };
+    $('mkpall').onclick = () => { $('mkpa').value = 0; $('mkpb').value = $('mkpb').max; paintPreview(); };
+    $('mkp1').onclick = () => { $('mkpa').value = 0; $('mkpb').value = Math.round($('mkpb').max / 2); paintPreview(); };
+    $('mkp2').onclick = () => { $('mkpa').value = Math.round($('mkpb').max / 2); $('mkpb').value = $('mkpb').max; paintPreview(); };
+    $('mkrest').onclick = async () => { try { await Prt.printRest(); } catch (e) { toast(e.message, 'bad'); } setBar(st.res); }; window.addEventListener('printrest', () => setBar(st.res));
     $('mkprint').onclick = async () => { try { $('mkprint').disabled = true; const bits = await bitsFor(true); await Prt.printBits(bits, st.kind); } catch (e) { toast(e.message, 'bad'); } finally { $('mkprint').disabled = false; setBar(st.res); } };
     $('mkext').onclick = async () => { if (st.res && st.res.extra) await Prt.printBits(st.res.extra.bits, st.kind + '-answer'); };
     $('mksave').onclick = async () => { try { const c = await canvasOf(); const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = `catcam-${st.kind}-${Date.now()}.png`; a.click(); toast('Saved PNG'); } catch (e) { toast(e.message, 'bad'); } };

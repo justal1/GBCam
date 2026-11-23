@@ -75,17 +75,22 @@ const Prt = (() => {
 
   // ---- shared plumbing ----
   let last = null;
+  let rest = null;
   async function printBits(bits, label) {
     if (window.Kid && !Kid.canPrint()) return false;
-    const c = cfg(), pr = $('prog'), bar = pr.firstElementChild; pr.style.display = 'block'; bar.style.width = 0;
+    const c = cfg(), pr = $('prog'), bar = pr.firstElementChild, sb = $('pstop'); pr.style.display = 'block'; bar.style.width = 0; ble.abort = false; sb.hidden = false; sb.disabled = false; sb.textContent = '⏹ Stop printing'; sb.onclick = () => { ble.abort = true; sb.disabled = true; sb.textContent = 'Stopping…'; };
     try {
       const job = buildJob(bits, c); log((label || 'print') + ':', job.length, 'packets');
       if (!c.mock && !ble.wc) await bleConnect();
-      await (c.mock ? mockSend : bleSend)(job, c, p => bar.style.width = (p * 100) + '%');
-      log((label || 'print') + ' done'); last = { bits, label }; toast('Printed ✓'); if (window.Kid) Kid.printed(); if (window.Health) Health.record(bits.length / W + (c.feed || 0), true); if (navigator.vibrate) navigator.vibrate(25); return true;
+      const stopped = await (c.mock ? mockSend : bleSend)(job, c, p => bar.style.width = (p * 100) + '%');
+      last = { bits, label };
+      if (stopped != null) { const done = Math.max(0, stopped - 4), total = bits.length / W; rest = done < total ? { bits: bits.slice(done * W), label: (label || 'print') + '-rest' } : null; log((label || 'print') + ' stopped after row ' + done + ' of ' + total); if (window.Health) Health.record(done + (c.feed || 0), true); toast('Stopped after ' + (done / 80).toFixed(1) + ' cm. “Print the rest” carries on from there.'); window.dispatchEvent(new Event('printrest')); return true; }
+      rest = null; window.dispatchEvent(new Event('printrest'));
+      log((label || 'print') + ' done'); toast('Printed ✓'); if (window.Kid) Kid.printed(); if (window.Health) Health.record(bits.length / W + (c.feed || 0), true); if (navigator.vibrate) navigator.vibrate(25); return true;
     } catch (e) { log('PRINT ERROR', e.message); last = { bits, label }; if (window.Health) Health.record(0, false, e.message); toast('Print failed: ' + e.message + ' — see Log at the bottom', 'bad'); return false; }
-    finally { setTimeout(() => { pr.style.display = 'none'; bar.style.width = 0; }, 800); }
+    finally { sb.hidden = true; setTimeout(() => { pr.style.display = 'none'; bar.style.width = 0; }, 800); }
   }
+  const printRest = () => rest ? printBits(rest.bits, rest.label) : false;
   // preview modal: show a canvas, with Print / Save / Close (+ optional extra button)
   function preview(canvas, bits, label, extra) {
     const m = $('modal'), body = $('modalbody'); body.innerHTML = '';
@@ -115,5 +120,5 @@ const Prt = (() => {
     $('modal').addEventListener('click', e => { if (e.target === $('modal')) $('modal').hidden = true; });
   }
   initUI();
-  return { get last() { return last; }, textBits, canvasBits, bitsCanvas, stack, blank, solid, calibration, printBits, preview, previewBits };
+  return { get last() { return last; }, get rest() { return rest; }, printRest, textBits, canvasBits, bitsCanvas, stack, blank, solid, calibration, printBits, preview, previewBits };
 })();
