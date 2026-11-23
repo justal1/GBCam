@@ -47,17 +47,20 @@ const Make = (() => {
   let ansiDoc = null, ansiKind = null;
   // ---------------- picture -> 384x336 Floyd-Steinberg bits ----------------
   let pickedBits = null;
-  function ditherBitmap(bmp) {
-    const c = cvs(W, H), x = c.getContext('2d'), k = Math.max(W / bmp.width, H / bmp.height), dw = bmp.width * k, dh = bmp.height * k;
-    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
-    const d = x.getImageData(0, 0, W, H).data, g = new Float32Array(W * H), bits = new Uint8Array(W * H);
+  function ditherBitmap(bmp, o) { // o: fit 'cover' (384x336, default) or 'width' (384 wide, keeps proportions); method 'fs' | 'bayer' | 'thresh'; invert
+    o = o || {}; const hh = o.fit === 'width' ? Math.max(120, Math.min(900, Math.round(W * bmp.height / bmp.width))) : H;
+    const c = cvs(W, hh), x = c.getContext('2d'), k = o.fit === 'width' ? W / bmp.width : Math.max(W / bmp.width, hh / bmp.height), dw = bmp.width * k, dh = bmp.height * k;
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, hh); x.imageSmoothingQuality = 'high'; x.drawImage(bmp, (W - dw) / 2, (hh - dh) / 2, dw, dh);
+    const d = x.getImageData(0, 0, W, hh).data, g = new Float32Array(W * hh), bits = new Uint8Array(W * hh);
     for (let i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
-    let lo = 255, hi = 0; for (const v of g) { if (v < lo) lo = v; if (v > hi) hi = v; } const sc = hi > lo ? 255 / (hi - lo) : 1; for (let i = 0; i < g.length; i++) g[i] = (g[i] - lo) * sc; // auto-contrast
-    for (let y = 0; y < H; y++) for (let xx = 0; xx < W; xx++) { const i = y * W + xx, o = g[i], n = o < 128 ? 0 : 255, e = o - n; bits[i] = n ? 0 : 1;
-      if (xx + 1 < W) g[i + 1] += e * 7 / 16; if (y + 1 < H) { if (xx > 0) g[i + W - 1] += e * 3 / 16; g[i + W] += e * 5 / 16; if (xx + 1 < W) g[i + W + 1] += e / 16; } }
-    return bits;
+    let lo = 255, hi = 0; for (const v of g) { if (v < lo) lo = v; if (v > hi) hi = v; } const sc = hi > lo ? 255 / (hi - lo) : 1; for (let i = 0; i < g.length; i++) { g[i] = (g[i] - lo) * sc; if (o.invert) g[i] = 255 - g[i]; } // auto-contrast
+    const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+    if (o.method === 'bayer') { for (let y = 0; y < hh; y++) for (let xx = 0; xx < W; xx++) bits[y * W + xx] = g[y * W + xx] < (BAY[(y & 3) * 4 + (xx & 3)] + 0.5) * 16 ? 1 : 0; }
+    else if (o.method === 'thresh') { for (let i = 0; i < g.length; i++) bits[i] = g[i] < 118 ? 1 : 0; }
+    else for (let y = 0; y < hh; y++) for (let xx = 0; xx < W; xx++) { const i = y * W + xx, v = g[i], n = v < 128 ? 0 : 255, e = v - n; bits[i] = n ? 0 : 1;
+      if (xx + 1 < W) g[i + 1] += e * 7 / 16; if (y + 1 < hh) { if (xx > 0) g[i + W - 1] += e * 3 / 16; g[i + W] += e * 5 / 16; if (xx + 1 < W) g[i + W + 1] += e / 16; } }
+    bits.h = hh; return bits;
   }
-
 
   const pickerHtml = `<div class="row"><button name="pickimg" type="button">🖼 Use a picture from my phone…</button><button name="clearimg" type="button">Use camera photo</button><input name="imgfile" type="file" accept="image/*" hidden></div><div class="sub" name="imgnote"></div>`;
   function pickerInit(r) {
@@ -96,6 +99,43 @@ const Make = (() => {
         x.strokeStyle = '#fff'; x.lineWidth = 2; x.setLineDash([10, 6, 3, 8]); x.beginPath(); x.moveTo(0, H * 0.5 + 2); x.lineTo(PW, H * 0.5 - 3); x.stroke(); x.setLineDash([]);
       }
     });
+  }
+
+
+  // ---------------- image search ----------------
+  let searchSel = null;
+  const strip = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
+  async function commonsSearch(q, offset) {
+    const u = 'https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=24&gsroffset=' + offset + '&gsrsearch=' + encodeURIComponent(q + ' filetype:bitmap') + '&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=240&iiextmetadatafilter=Artist|LicenseShortName&format=json&origin=*';
+    const j = await (await fetch(u)).json(), pages = j.query ? Object.values(j.query.pages).sort((a, b) => a.index - b.index) : [];
+    const items = pages.filter(p => p.imageinfo && p.imageinfo[0] && p.imageinfo[0].thumburl && /^image\/(jpeg|png)/.test(p.imageinfo[0].mime)).map(p => { const i = p.imageinfo[0], m = i.extmetadata || {}; const art = strip(m.Artist && m.Artist.value).slice(0, 40), lic = strip(m.LicenseShortName && m.LicenseShortName.value); return { title: p.title.replace(/^File:/, '').replace(/\.\w+$/, ''), thumb: i.thumburl, full: i.thumburl.replace(/\/\d+px-([^/]+)$/, '/500px-$1'), credit: [art, lic, 'Wikimedia Commons'].filter(Boolean).join(' · ') }; });
+    return { items, next: j.continue ? j.continue.gsroffset : null };
+  }
+  async function googleSearch(q, start, key, cx) {
+    if (!key || !cx) throw new Error('Open “Use Google instead” below and enter your API key and search engine ID first.');
+    const u = 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(key) + '&cx=' + encodeURIComponent(cx) + '&searchType=image&safe=active&num=10&start=' + start + '&q=' + encodeURIComponent(q), res = await fetch(u), j = await res.json();
+    if (j.error) throw new Error('Google said: ' + (j.error.message || res.status));
+    return { items: (j.items || []).map(it => ({ title: it.title, thumb: (it.image && it.image.thumbnailLink) || it.link, full: 'https://images.weserv.nl/?w=700&output=jpg&url=' + encodeURIComponent(it.link), credit: (it.displayLink || '') + ' (via Google)' })), next: (j.queries && j.queries.nextPage) ? j.queries.nextPage[0].startIndex : null };
+  }
+  function searchInit(r) {
+    const q = n => r.querySelector('[name=' + n + ']'); let items = [], next = null, loading = false;
+    const status = t => { q('status').textContent = t || ''; };
+    const draw = () => { const g = q('grid'); g.innerHTML = ''; items.forEach((it, i) => { const im = new Image(); im.src = it.thumb; im.alt = it.title; im.loading = 'lazy'; im.title = it.title; im.onclick = () => pick(i); im.className = searchSel && searchSel.it === it ? 'on' : ''; g.appendChild(im); }); };
+    async function run(more) {
+      if (loading) return; const term = q('q').value.trim(); if (!term) { status('Type what you want to search for.'); return; } loading = true; status('Searching…');
+      try {
+        const res = q('src').value === 'google' ? await googleSearch(term, more ? next : 1, q('gkey').value.trim(), q('gcx').value.trim()) : await commonsSearch(term, more ? next : 0);
+        items = more ? items.concat(res.items) : res.items; next = res.next; draw(); q('more').hidden = !next; status(items.length ? 'Tap a picture to use it.' : 'Nothing found. Try another word.');
+      } catch (e) { status('Search failed: ' + e.message); } finally { loading = false; }
+    }
+    async function pick(i) {
+      const it = items[i]; status('Loading the picture…');
+      try { const resp = await fetch(it.full); if (!resp.ok) throw new Error('HTTP ' + resp.status); const blob = await resp.blob(); let bmp; try { bmp = await createImageBitmap(blob); } catch (e) { const t2 = await (await fetch(it.thumb)).blob(); bmp = await createImageBitmap(t2); /* fall back to the small preview */ } searchSel = { it, bmp, credit: it.credit }; q('picked').hidden = false; q('credittext').textContent = it.title + ' — ' + it.credit; draw(); status(''); r.dispatchEvent(new Event('input', { bubbles: true })); }
+      catch (e) { status('Could not load that one (' + e.message + '). Try another picture.'); }
+    }
+    q('go').onclick = () => run(false); q('more').onclick = () => run(true); q('q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(false); } });
+    const send = kind => { if (!searchSel) return; pickedBits = ditherBitmap(searchSel.bmp, { fit: 'cover', method: q('method').value, invert: q('invert').checked }); if (typeof Make !== 'undefined') Make.show(kind); toast('Picture sent to the ' + (kind === 'sticker' ? 'sticker' : 'wanted poster') + ' maker'); };
+    q('tosticker').onclick = () => send('sticker'); q('towanted').onclick = () => send('wanted');
   }
 
   // ---------------- stickers ----------------
@@ -690,6 +730,24 @@ const Make = (() => {
         lines.forEach((l, i) => { const [to, fr] = l.split('|').map(t => t.trim()); if (i) parts.push(gapRow()); parts.push(giftTag(to, fr == null || fr === '' ? v('from').value.trim() : fr, v('msg').value.trim(), o)); });
         parts.push(Prt.blank(6)); return Prt.stack(parts);
       },
+    },
+    search: {
+      title: '🔎 Image search',
+      html: () => field('q', 'Search for a picture', 'text', '', 'placeholder="e.g. lighthouse, dinosaur, Eiffel Tower" maxlength="80"')
+        + sel('src', 'Search in', [['commons', 'Wikimedia Commons (free, no key)'], ['google', 'Google (needs your own free key, see below)']], 'commons')
+        + `<div class="row"><button name="go" type="button" class="pri">Search</button><button name="more" type="button" hidden>More results</button></div><div name="status" class="sub"></div><div name="grid" class="srgrid"></div>`
+        + `<div name="picked" hidden><div class="sub" name="credittext"></div>`
+        + sel('fit', 'Shape', [['cover', 'Photo (384×336, cropped to fill)'], ['width', 'Whole picture (full width, any height)']], 'cover') + sel('method', 'Look', [['fs', 'Photo (smooth dots)'], ['bayer', 'Newspaper (regular dots)'], ['thresh', 'Poster (black and white only)']], 'fs') + chk('invert', 'Invert (swap black and white)', false) + chk('credit', 'Print the picture credit underneath', true)
+        + `<div class="row"><button name="tosticker" type="button">Use for a sticker</button><button name="towanted" type="button">Use for a wanted poster</button></div></div>`
+        + `<details style="margin-top:10px"><summary>Use Google instead</summary><div class="sub">Google needs your own free key: create a Programmable Search Engine (turn on “Image search” and “Search the entire web”) and an API key, which allows 100 searches a day. The key stays on this phone. Google’s pictures come through the free images.weserv.nl service so the app is allowed to read them.</div>${field('gkey', 'API key', 'text', '', 'autocomplete="off"')}${field('gcx', 'Search engine ID (cx)', 'text', '', 'autocomplete="off"')}<div class="sub"><a href="https://developers.google.com/custom-search/v1/overview" target="_blank" rel="noopener" style="color:var(--acc)">How to get them ↗</a></div></details>`
+        + `<div class="sub" style="margin-top:8px">Wikimedia Commons pictures are free to use but need credit, which is why the credit line is printed. Pictures from Google belong to whoever made them; keep them for personal printing.</div>`,
+      async build(r, v) {
+        if (!searchSel || !searchSel.bmp) throw new Error('Search for something, then tap a picture.');
+        const o = { fit: v('fit').value, method: v('method').value, invert: v('invert').checked }, bits = ditherBitmap(searchSel.bmp, o), parts = [{ bits, h: bits.h }];
+        if (v('credit').checked && searchSel.credit) parts.push(Prt.textBits(searchSel.credit, { size: 14, bold: false, pad: 6 }));
+        parts.push(Prt.blank(8)); return Prt.stack(parts);
+      },
+      init(r) { searchInit(r); },
     },
     scroll: {
       title: '📜 Scroll message',
