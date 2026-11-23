@@ -47,7 +47,6 @@ const AnsiDraw = (() => {
     if (st.cursor && st.tool === 'text') { vx.strokeStyle = '#ff0'; vx.lineWidth = 2; vx.strokeRect(st.cursor.c * 8 + 1, st.cursor.r * 16 + 1, 6, 14); }
   }
   function drawCellNow(c, r) { Ansi.drawCell(bx, doc.ch[idx(c, r)], doc.at[idx(c, r)], c, r); }
-  function refreshRange(c0, r0, c1, r1) { for (let r = Math.max(0, r0); r <= Math.min(doc.rows - 1, r1); r++) for (let c = Math.max(0, c0); c <= Math.min(doc.cols - 1, c1); c++) drawCellNow(c, r); blit(); }
 
   // ---------- pointer handling ----------
   const pos = ev => { const rc = view.getBoundingClientRect(); return { x: (ev.clientX - rc.left) / rc.width * doc.cols, y: (ev.clientY - rc.top) / rc.height * doc.rows }; };

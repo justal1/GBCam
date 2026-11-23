@@ -1,0 +1,15 @@
+<!doctype html><base href="../"><body><pre id=o></pre><iframe id=f src="index.html" width=400 height=300></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(800);const w=document.getElementById('f').contentWindow;
+ const run=async(name,saved,devs,connectOK,all)=>{const calls=[];w.localStorage.removeItem('catcam-printer');if(saved)w.localStorage.setItem('catcam-printer',JSON.stringify(saved));w.document.getElementById('blall').checked=!!all;
+  const mk=(id,nm)=>({id,name:nm,gatt:{connected:true,connect:()=>connectOK?Promise.resolve({getPrimaryServices:async()=>[]}):new Promise(()=>{})},addEventListener(){}});
+  Object.defineProperty(w.navigator,'bluetooth',{configurable:true,value:{getDevices:async()=>devs.map(d=>mk(d[0],d[1])),requestDevice:async o=>{calls.push('requestDevice '+JSON.stringify(o.filters||'ALL'));const n=mk('new1','PD01-1234');n.gatt.connect=()=>Promise.resolve({getPrimaryServices:async()=>[]});return n}}});
+  let err='';try{await w.eval('bleConnect')()}catch(e){err=e.message}
+  L(name+': '+(calls.join(';')||'no chooser')+' | saved after='+w.localStorage.getItem('catcam-printer')+' | end: '+err.slice(0,50))};
+ await run('A first time (nothing saved)',null,[],true);
+ await run('B saved + permitted + in range',{id:'p1',name:'PD01-AAAA'},[['p1','PD01-AAAA']],true);
+ await run('C saved but not in range (7s timeout)',{id:'p1',name:'PD01-AAAA'},[['p1','PD01-AAAA']],false);
+ await run('D saved, filter off (show all)',{id:'p9',name:'PD01-AAAA'},[],true,true);
+ await run('E saved, nothing permitted',{id:'p9',name:'PD01-AAAA'},[],true);
+ L('DONE')}catch(e){L('FATAL '+e.message)}};
+</script></body>

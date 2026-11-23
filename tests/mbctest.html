@@ -1,0 +1,18 @@
+<!doctype html><base href="../"><meta charset="utf-8"><script src="gb.js"></script><script>
+const L=(...a)=>console.log('T:',...a);
+function mk(type,banks,ramCode){const r=new Uint8Array(banks*0x4000);for(let b=0;b<banks;b++){r[b*0x4000+0x100]=b&255;r[b*0x4000+0x101]=b>>8}r[0x147]=type;r[0x149]=ramCode;return new GameBoy(r)}
+let ok=true;const chk=(n,a,b)=>{if(a!==b){ok=false;L('FAIL',n,'got',a,'want',b)}};
+// MBC1
+{const g=mk(0x03,32,3);g.wr(0x2000,5);chk('mbc1 bank5',g.rd(0x4100),5);g.wr(0x2000,0);chk('mbc1 bank0->1',g.rd(0x4100),1);
+ g.wr(0x4000,1);g.wr(0x2000,2);chk('mbc1 hi bits bank 34 wraps to 2 (32 banks)',g.rd(0x4100),(34%32));
+ g.wr(0x6000,1);chk('mbc1 mode1 bank0 area',g.rd(0x0100),(1<<5)%32);
+ g.wr(0x0000,0x0A);g.wr(0x6000,0);g.wr(0xA000,0x77);chk('mbc1 ram write/read',g.rd(0xA000),0x77);g.wr(0x0000,0);chk('mbc1 ram disabled reads ff',g.rd(0xA000),0xFF)}
+// MBC3
+{const g=mk(0x13,64,3);g.wr(0x2000,9);chk('mbc3 bank9',g.rd(0x4100),9);g.wr(0x2000,0);chk('mbc3 0->1',g.rd(0x4100),1);
+ g.wr(0x0000,0x0A);g.wr(0x4000,2);g.wr(0xA010,0x5A);g.wr(0x4000,0);chk('mbc3 ram bank0 empty',g.rd(0xA010),0);g.wr(0x4000,2);chk('mbc3 ram bank2',g.rd(0xA010),0x5A)}
+// MBC5 (9-bit)
+{const g=mk(0x1B,512,3);g.wr(0x2000,0x34);chk('mbc5 low',g.rd(0x4100)|(g.rd(0x4101)<<8),0x34);g.wr(0x3000,1);chk('mbc5 hi bit',g.rd(0x4100)|(g.rd(0x4101)<<8),0x134);g.wr(0x2000,0);g.wr(0x3000,0);chk('mbc5 bank0 allowed',g.rd(0x4100),0)}
+// plain
+{const g=mk(0x00,2,0);chk('plain bank1',g.rd(0x4100),1)}
+L(ok?'MBC TESTS PASS':'MBC TESTS FAILED');
+</script>

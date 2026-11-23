@@ -1,0 +1,21 @@
+<!doctype html><base href="../"><body style="margin:0;background:#222"><iframe id=f src="index.html" width=420 height=900 style="border:0"></iframe>
+<script>
+const f=document.getElementById('f'),mode=location.search.slice(1);
+f.onload=async()=>{
+ const L=(...a)=>console.log('T:',...a),w=f.contentWindow,d=w.document;
+ await new Promise(r=>setTimeout(r,1200));
+ if(mode.startsWith('col')){
+  const k=document.createElement('canvas');k.width=640;k.height=480;const x=k.getContext('2d');
+  const sky=x.createLinearGradient(0,0,0,300);sky.addColorStop(0,'#2a5bd7');sky.addColorStop(1,'#ffb36b');x.fillStyle=sky;x.fillRect(0,0,640,300);x.fillStyle='#2f8f3a';x.fillRect(0,300,640,180);x.fillStyle='#ffd23f';x.beginPath();x.arc(480,120,50,0,7);x.fill();x.fillStyle='#c0392b';x.fillRect(150,200,180,120);x.fillStyle='#6b3a1e';x.beginPath();x.moveTo(130,200);x.lineTo(240,120);x.lineTo(350,200);x.fill();x.fillStyle='#fff';x.fillRect(220,250,50,70);
+  d.getElementById('look').value='cdith';d.getElementById('levels').value=location.search.includes('fs')?'3':'4';d.getElementById('cdm').value=location.search.includes('fs')?'fs':'bayer';d.getElementById('look').dispatchEvent(new Event('input'));
+  w.catcam.loadBitmap(await createImageBitmap(k));
+  await new Promise(r=>setTimeout(r,300));L('colour set');
+ }else{
+  d.getElementById('tabgb').click();
+  await new Promise(r=>setTimeout(r,9000));
+  const gb=w.gbui.gb;L('auto-fetched ROM:',!!gb,gb&&gb.rom.length);
+  if(gb){w.gbui.tick(400);d.getElementById('gbpal').value='ocean';w.gbui.tick(2)}
+ }
+ L('DONE');
+};
+</script></body>

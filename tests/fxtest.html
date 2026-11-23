@@ -1,0 +1,25 @@
+<!doctype html><base href="../"><body style="margin:0;background:#222"><iframe id=f src="index.html" width=420 height=900 style="border:0" allow="camera"></iframe><div id=o></div>
+<script>
+const f=document.getElementById('f');
+f.onload=async()=>{
+ const L=(...a)=>console.log('T:',...a),w=f.contentWindow,d=w.document;
+ await new Promise(r=>setTimeout(r,1000));const Fx=w.eval('Fx');
+ const k=document.createElement('canvas');k.width=640;k.height=480;const x=k.getContext('2d');
+ x.fillStyle='#8ec5ff';x.fillRect(0,0,640,480);x.fillStyle='#3c9a4a';x.fillRect(0,380,640,100);
+ x.fillStyle='#f1c27d';x.beginPath();x.ellipse(320,230,95,115,0,0,7);x.fill();             // head
+ x.fillStyle='#5a3416';x.beginPath();x.ellipse(320,135,100,38,0,Math.PI,0);x.fill();       // hair
+ x.fillStyle='#fff';x.beginPath();x.arc(285,215,20,0,7);x.arc(355,215,20,0,7);x.fill();
+ x.fillStyle='#222';x.beginPath();x.arc(285,218,9,0,7);x.arc(355,218,9,0,7);x.fill();
+ x.strokeStyle='#a0302a';x.lineWidth=8;x.beginPath();x.arc(320,265,40,0.15*Math.PI,0.85*Math.PI);x.stroke();
+ x.fillStyle='#c0392b';x.fillRect(250,345,140,60);
+ const bmp=await createImageBitmap(k);
+ d.getElementById('look').value='cdith';d.getElementById('look').dispatchEvent(new Event('input'));
+ d.getElementById('tabfx').click();
+ Fx.st.cx=0.5;Fx.st.cy=0.48;
+ const names=Object.keys(Fx.E);
+ for(const n of names){Fx.st.name=n;w.catcam.loadBitmap(bmp);await new Promise(r=>setTimeout(r,60));
+   const c=document.createElement('canvas');c.width=192;c.height=168;c.getContext('2d').drawImage(d.getElementById('view'),0,0,192,168);
+   const wr=document.createElement('div');wr.style.cssText='display:inline-block;color:#fff;font:11px monospace;margin:2px';wr.appendChild(c);wr.appendChild(document.createElement('br'));wr.appendChild(document.createTextNode(n));document.getElementById('o').appendChild(wr)}
+ L('DONE',names.length);
+};
+</script></body>

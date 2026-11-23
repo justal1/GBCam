@@ -1,9 +1,0 @@
-<!doctype html><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;padding:6px"></div><iframe id=f src="index.html" width=10 height=10 style="position:absolute;left:-99px"></iframe><script>
-document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,M=w.eval('Make'),P=w.eval('Prt'),L=t=>document.getElementById('o').textContent+=t+'\n';
- M.show('gift');const d=M.panels.gift,v=n=>d.querySelector('[name='+n+']');v('to').value='Maya';v('from').value='Alan';
- const occ=[...v('occasion').options].map(o=>o.value);L('occasions: '+occ.join(', '));
- for(const id of occ){v('occasion').value=id;v('occasion').dispatchEvent(new w.Event('change',{bubbles:true}));const r=M.KINDS.gift.build(d,v);const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:240px';const cell=document.createElement('div');cell.style.cssText='color:#fff;font:11px monospace';cell.appendChild(c);cell.append(id+' ['+v('border').value+'/'+v('icon').value+'] "'+v('msg').value+'"');document.getElementById('g').appendChild(cell)}
- // every icon and border once more, on one wide label, to catch any that throw
- for(const ic of [...v('icon').options].map(o=>o.value))for(const bd of [...v('border').options].map(o=>o.value)){v('icon').value=ic;v('border').value=bd;M.KINDS.gift.build(d,v)}
- L('all icon x border combinations built OK');L('DONE')}catch(e){document.getElementById('o').textContent+='FATAL '+e.message+'\n'+e.stack}};
-</script></body>

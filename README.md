@@ -1,5 +1,55 @@
-# CatCam
-Game Boy Camera–style dithered photos, printed on a cheap BLE "cat" thermal printer (GB01/02/03, MX05/06, YT01…). Web app, no install.
+# GB CatCam
+
+A single-page web app (PWA, no build step, hosted on GitHub Pages) for cheap Bluetooth "cat" thermal printers (tested with a PD01; GB01/02/03, MX05/06, YT01 use the same protocol). It started as a Game Boy Camera look-alike and grew into a pocket print shop.
+
+**Run it:** `./serve.sh` and open the https URL in Chrome on Android (accept the cert warning), or use the GitHub Pages site. Tap **Connect printer** once; after that the app remembers it (see "Bluetooth" below).
+
+## Tabs
+| Tab | What it does | Code |
+|---|---|---|
+| Cam | Live camera, Game Boy / GBC / colour dithers, timer, burst, photo-booth strips, clips, album | `index.html`, `gbc.js`, `shots.js`, `album.js` |
+| Fun | 44 effects (warps, glitch, goo/liquify), frames, stickers, captions | `fx.js`, `fx2.js`, `goo.js`, `overlay.js` |
+| Print | Label printer, calibration page, **printer health** (paper gauge, status check) | `print.js`, `health.js` |
+| Make | 26 printables: photo strip, sticker, wanted poster, gift tags, QR/barcodes, QR scanner, to-do, day card, dice, scroll, mazes, sudoku, word search, drawing pad, ANSI art viewer/editor, image search, Logo turtle, origami, **party printables, labels and templates, planners, Wikipedia cards** | `make.js`, `printables.js`, `logo.js`, `origami.js`, `ansi.js`, `ansidraw.js` |
+| GB | Game Boy / Game Boy Colour emulator with Pocket Camera and Game Boy Printer support (bring your own ROMs) | `gb.js`, `gbui.js` |
+| ZX | ZX Spectrum 48K emulator with ZX Printer (COPY/LPRINT), BASIC typing, .TAP/.ZIP loading | `spectrum/` |
+
+Kid mode (`kid.js`) hides the less suitable panels, adds a print limit and a PIN. `swipe.js` swaps tabs by swiping.
+
+## How printing works
+`Prt.printBits(bits, label)` (print.js) is the single entry point. `bits` is a `Uint8Array`, 384 dots wide x h rows, 1 = ink (about 8 dots per mm). Everything else (Make panels, album, emulators) builds bits and calls it.
+- Protocol: BLE service 0xAE30, write 0xAE01, notify 0xAE02. Frame `51 78 cmd 00 lenLE data crc8(poly 7) ff`. Job: A4 quality, A6 lattice start, AF energy, BE mode, one A2 per dot row, A1 feed, A6 lattice end, A3 status query.
+- Default chunk size is 20 bytes (100 failed on a real phone). Flow control via the 0xAE notification.
+- **Stop** (red button while printing): `ble.abort` makes the sender skip the remaining rows but still send feed + end. The unprinted rest is kept as `Prt.rest` ("Print the rest").
+- **Print part**: Make > preview > Part: From/To sliders snap to blank rows so cuts fall between items.
+- Printer health: `health.js` estimates paper used from rows printed (roll length setting, 75/90/100% warnings) and shows the raw reply to the A3 status query. Battery and paper-sensor bits are not decoded yet.
+
+## Bluetooth
+The chooser is shown once. The picked printer is stored (`localStorage catcam-printer`) and reconnected silently through `navigator.bluetooth.getDevices()` when the browser supports it. Otherwise the chooser only lists devices whose name starts like the last printer (e.g. "PD"). Printer settings has "Show all Bluetooth devices" and "Forget remembered printer".
+
+## Make panel framework (make.js)
+`KINDS[name] = { title, html(), build(root, v, opts), init(root), noPreview? }`. `build` returns `{bits, h, canvas?}`. Helpers: `page(h, fn)`, `Prt.textBits/stack/blank`, `field/sel/chk`, `wrapLines`, `rng`, `ditherBitmap`. Inputs persist in localStorage `catcam-make`. `printables.js` draws party/label/planner designs as canvases (`Printables.build(what, options)`).
+
+## Tests
+Browser test pages live in `tests/` (each has `<base href="../">` so it loads the app files from the repo root). Serve the repo root (`python3 -m http.server 8801`) and open `http://localhost:8801/tests/<name>.html`, or run headless with Chrome (`--virtual-time-budget`, `--dump-dom`). Many log to a tiny log server (`:8802`) or the console. Useful ones:
+- `tests/smoke.html`: opens every Make panel and tries every dropdown option and checkbox; reports exceptions, blank or oversized output.
+- `tests/printtest.html`, `maketest.html`, `origamitest.html`, `gifttest.html`, `badgetest.html`: render checks for printables.
+- `tests/parttest.html`: stop mid-print, print a part, print the rest (mock printer).
+- `tests/bletest.html`: the remembered-printer logic with a fake `navigator.bluetooth`.
+- `tests/hwtest.html`, `tests/zextest.html`: Z80 / Game Boy accuracy (zextest runs the long ZEXDOC exerciser and needs real time).
+- `tests/gbtest.html`, `gbprint_test.html`, `romtest.html` need your own ROMs in `rom/` (never committed).
+
+## Release checklist
+Bump the version in three places: the header label (`>vNN<`) and `?v=NN` on the script tags in `index.html`, and the cache name in `sw.js` (`catcam-vNN`). The service worker is network-first, so updates arrive on a normal reload (reload twice if a phone holds the old version).
+
+## Legal notes
+- `spectrum/48.rom` is bundled under Amstrad's permission (see `spectrum/ROM-NOTICE.txt`).
+- `vendor/Web437_IBM_VGA_8x16.woff` is CC BY-SA 4.0 (credit and licence in `vendor/`).
+- Game ROMs, ANSI/NFO art by other people and test ROMs are never committed (see `.gitignore`).
+- Wikipedia card text is CC BY-SA, which is why each card says so. Commons pictures print their credit.
+
+---
+# Older notes (feature rounds, in the order they were built)
 
 Run: `./serve.sh`, open the https URL in **Chrome on Android**, accept the cert warning, tap Connect printer.
 Modes: Game Boy Camera (128x112, 4 levels, Bayer 4x4, printed as 3x3 dot patterns), Bayer, Floyd–Steinberg, threshold.

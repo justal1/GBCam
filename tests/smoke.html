@@ -1,0 +1,19 @@
+<!doctype html><base href="../"><body><pre id=o></pre><iframe id=f src="index.html" width=420 height=900></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{const w=document.getElementById('f').contentWindow,d=w.document;
+ const errs=[];w.addEventListener('error',e=>errs.push('onerror: '+e.message+' @'+(e.filename||'').split('/').pop()+':'+e.lineno));w.addEventListener('unhandledrejection',e=>errs.push('rejection: '+(e.reason&&e.reason.message||e.reason)));
+ await sleep(1000);const M=w.eval('Make'),P=w.eval('Prt');
+ for(const t of ['tabcam','tabfun','tabpr','tabmk','tabgb','tabzx'])try{const b=d.getElementById(t);if(b){b.click();await sleep(250)}else L('no tab button '+t)}catch(e){L('TAB '+t+' '+e.message)}
+ d.getElementById('tabmk').click();await sleep(200);
+ const kinds=Object.keys(M.KINDS);L('kinds: '+kinds.length+' '+kinds.join(','));
+ let n=0,bad=0;
+ for(const k of kinds){M.show(k);await sleep(120);const p=M.panels[k];if(!p){L(k+': NO PANEL');bad++;continue}
+  const variants=[['default',null]];
+  p.querySelectorAll('select[name]').forEach(s=>[...s.options].forEach(o=>variants.push([s.name+'='+o.value,()=>{s.value=o.value;s.dispatchEvent(new w.Event('change',{bubbles:true}))}])));
+  p.querySelectorAll('input[type=checkbox][name]').forEach(c=>{variants.push([c.name+' toggled',()=>{c.checked=!c.checked;c.dispatchEvent(new w.Event('change',{bubbles:true}))}])});
+  for(const [nm,fn] of variants){n++;try{if(fn)fn();await sleep(30);const r=await M.KINDS[k].build(p,x=>p.querySelector('[name='+x+']'),{});
+    if(r){const len=r.bits.length,h=len/384;if(len%384)L(k+' ['+nm+'] bits not a multiple of 384: '+len);if(h>5000)L(k+' ['+nm+'] very tall: '+h);let ink=0;for(let i=0;i<len;i+=7)ink+=r.bits[i];if(!ink)L(k+' ['+nm+'] BLANK output h='+h);if(r.h!==undefined&&Math.abs(r.h-h)>0.5)L(k+' ['+nm+'] r.h '+r.h+' != '+h)}}
+   catch(e){bad++;L(k+' ['+nm+'] '+(/TypeError|ReferenceError|undefined|NaN|not a function|RangeError|null/.test(e.message)?'BUG ':'msg ')+e.name+': '+e.message+' | '+(e.stack||'').split('\n')[1].trim().slice(0,90))}}}
+ L('variants run: '+n+', exceptions: '+bad);
+ L('page errors: '+(errs.length?'\n  '+errs.join('\n  '):'none'));L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}};
+</script></body>

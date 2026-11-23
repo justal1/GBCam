@@ -1,0 +1,5 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;gap:10px;align-items:flex-start;padding:8px"></div><iframe id=f src="index.html" width=10 height=10 style="position:absolute;left:-99px"></iframe><script>
+document.getElementById('f').onload=async()=>{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,M=w.eval('Make'),P=w.eval('Prt'),L=t=>document.getElementById('o').textContent+=t+'\n';
+ M.show('badge');const d=M.panels.badge,v=n=>d.querySelector('[name='+n+']');
+ for(const [name,style,sub,orient] of [['ALEX','band','','side'],['ALEX','band','','sideL'],['MAYA','star','Chief snack officer','sideL']]){v('name').value=name;v('style').value=style;v('sub').value=sub;v('orient').value=orient;const r=M.KINDS.badge.build(d,v);L(name+' '+orient+': '+r.h+' dots long = '+(r.h/80).toFixed(1)+' cm, width '+(r.bits.length/r.h));const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;height:'+Math.min(520,r.h*0.6)+'px';document.getElementById('g').appendChild(c)}
+};</script></body>

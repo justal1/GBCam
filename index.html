@@ -156,7 +156,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 #mkpartbox{background:var(--panel);border-radius:12px;padding:8px 12px;margin:6px 0}#mkpartbox .ctl{display:flex;align-items:center;gap:10px;margin:4px 0}#mkpartbox .ctl span{flex:0 0 44px}#mkpartbox input[type=range]{flex:1}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v53</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v54</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
@@ -335,10 +335,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=53"></script>
-<script src="fx.js?v=53"></script>
-<script src="fx2.js?v=53"></script>
-<script src="goo.js?v=53"></script>
+<script src="gbc.js?v=54"></script>
+<script src="fx.js?v=54"></script>
+<script src="fx2.js?v=54"></script>
+<script src="goo.js?v=54"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -353,7 +353,7 @@ function saveSettings(){try{const s={};for(const k of ids){const e=$(k);s[k]=e.t
 function cfg(){const g=k=>{const e=$(k);return e.type==='checkbox'?e.checked:e.value};
   return{brightness:+g('brightness'),contrast:+g('contrast'),sharpen:+g('sharpen'),look:g('look'),sat:+g('sat'),res:g('res'),levels:+g('levels'),cdm:g('cdm'),mode:g('mode'),pal:g('pal'),auto:g('auto'),invert:g('invert'),
     energy:+g('energy'),feed:+g('feed'),chunk:+g('chunk'),delay:+g('delay'),msb:g('msb'),textmode:g('textmode'),mock:g('mock')}}
-function syncOutputs(){document.querySelectorAll('.ctl').forEach(c=>c.querySelectorAll('input[type=range]').forEach(r=>{r.nextElementSibling.textContent=r.value}))}
+function syncOutputs(){document.querySelectorAll('.ctl').forEach(c=>c.querySelectorAll('input[type=range]').forEach(r=>{const o=r.nextElementSibling;if(o&&o.tagName==='OUTPUT')o.textContent=r.value}))}
 
 // ---------- image pipeline ----------
 const BAYER4=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
@@ -546,8 +546,6 @@ function idb(){return new Promise((res,rej)=>{if(db)return res(db);const r=index
 async function dbAll(){try{const d=await idb();return await new Promise(r=>{const q=d.transaction('shots').objectStore('shots').getAll();q.onsuccess=()=>r(q.result)})}catch(e){return[]}}
 async function dbPut(o){try{const d=await idb();return await new Promise(r=>{const q=d.transaction('shots','readwrite').objectStore('shots').put(o);q.onsuccess=()=>r(q.result)})}catch(e){log('save failed',e.message)}}
 async function dbDel(id){try{const d=await idb();await new Promise(r=>{const q=d.transaction('shots','readwrite').objectStore('shots').delete(id);q.onsuccess=()=>r()})}catch(e){}}
-function thumbOf(bits){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H);
-  for(let i=0;i<W*H;i++){const v=bits[i]?20:244;im.data.set([v,v,v==20?24:v==244?232:v,255],i*4)}x.putImageData(im,0,0);return c}
 function refreshGallery(){return Album.refresh()}
 async function capture(){
   const g=live?grabVideo():curGray;if(!g)return null;
@@ -582,26 +580,26 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=53"></script>
-<script src="overlay.js?v=53"></script>
-<script src="shots.js?v=53"></script>
-<script src="album.js?v=53"></script>
-<script src="printables.js?v=53"></script>
-<script src="logo.js?v=53"></script>
-<script src="origami.js?v=53"></script>
-<script src="ansi.js?v=53"></script>
-<script src="ansidraw.js?v=53"></script>
-<script src="vendor/qrcode.js?v=53"></script>
-<script src="make.js?v=53"></script>
-<script src="gb.js?v=53"></script>
-<script src="gbui.js?v=53"></script>
-<script src="spectrum/z80.js?v=53"></script>
-<script src="spectrum/basic.js?v=53"></script>
-<script src="spectrum/spectrum.js?v=53"></script>
-<script src="spectrum/files.js?v=53"></script>
-<script src="spectrum/zxui.js?v=53"></script>
-<script src="health.js?v=53"></script>
-<script src="kid.js?v=53"></script>
-<script src="swipe.js?v=53"></script>
+<script src="print.js?v=54"></script>
+<script src="overlay.js?v=54"></script>
+<script src="shots.js?v=54"></script>
+<script src="album.js?v=54"></script>
+<script src="printables.js?v=54"></script>
+<script src="logo.js?v=54"></script>
+<script src="origami.js?v=54"></script>
+<script src="ansi.js?v=54"></script>
+<script src="ansidraw.js?v=54"></script>
+<script src="vendor/qrcode.js?v=54"></script>
+<script src="make.js?v=54"></script>
+<script src="gb.js?v=54"></script>
+<script src="gbui.js?v=54"></script>
+<script src="spectrum/z80.js?v=54"></script>
+<script src="spectrum/basic.js?v=54"></script>
+<script src="spectrum/spectrum.js?v=54"></script>
+<script src="spectrum/files.js?v=54"></script>
+<script src="spectrum/zxui.js?v=54"></script>
+<script src="health.js?v=54"></script>
+<script src="kid.js?v=54"></script>
+<script src="swipe.js?v=54"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

@@ -1,0 +1,61 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333"><div id=o></div>
+<script src="gb.js"></script>
+<script>
+(async()=>{
+ const L=(...a)=>console.log('T:',...a);
+ const rom=new Uint8Array(await (await fetch('rom/camera.gb')).arrayBuffer());
+ const gb=new GameBoy(rom);window.gb=gb;gb.printer.onPage=p=>{console.log('T: PAGE',p.w,p.h);const c=document.createElement('canvas');c.width=p.w;c.height=p.h;c.style.cssText='background:#fff;margin:4px;width:320px;image-rendering:pixelated';const x=c.getContext('2d'),im=x.createImageData(p.w,p.h);const g=[255,170,85,0];for(let i=0;i<p.w*p.h;i++){const v=g[p.shades[i]];im.data.set([v,v,v,255],i*4)}x.putImageData(im,0,0);document.body.appendChild(c)};
+ const V=new URLSearchParams(location.search).get('v')||'0'; gb.printer.log=[];{const pr=gb.printer;if(V==='1')pr.statusByte=function(now){let s=this.err&1;if(now<this.busyUntil)s|=6;else if(now<this.busyUntil+420000)s|=4;else if(this.flags&8)s|=8;return s};if(V==='2'){const ex=pr.exec.bind(pr);pr.exec=function(now){ex(now);if(this.cmd===2)this.busyUntil=now+5000000};}if(/^g/.test(V)){const [a,b,c]=V.slice(1).split('-').map(x=>parseInt(x,16));const ex=pr.exec.bind(pr);pr.exec=function(now){ex(now);if(this.cmd===2){this.busyUntil=now+3000000;this.t2=now+3000000+1500000;this.doneAt=1}};pr.statusByte=function(now){let s=this.err&1;if(this.cmd===2||this.doneAt){if(now<this.busyUntil)return s|a;if(now<this.t2)return s|b;return s|c}return s|(this.flags&8?8:0)}}
+ if(V==='3')pr.statusByte=function(now){let s=this.err&1;if(now<this.busyUntil)s|=6;else if(this.printedOnce)s|=0;else if(this.flags&8)s|=8;return s};if(V==='4'){pr.statusByte=function(now){let s=this.err&1;if(now<this.busyUntil)s|=6;else if(now<this.busyUntil+420000)s|=4;else s|=0;return s};const ex=pr.exec.bind(pr);pr.exec=function(now){ex(now);if(this.cmd===2)this.busyUntil=now+2000000};}}{const pr=gb.printer,orig=pr.exec.bind(pr);pr.exec=function(now){orig(now);pr.log.push([pr.cmd,pr.len,pr.statusByte(now),Math.round(now/4194.304)])}}
+ // synthetic sensor image
+ const src=new Uint8Array(128*112);for(let y=0;y<112;y++)for(let x=0;x<128;x++){const d=Math.hypot(x-64,y-56);src[y*128+x]=Math.max(20,255-d*3.2)}
+ gb.cameraSource=()=>src;
+ gb.printer.onPage=p=>L('PAGE',p.w,p.h);
+ const P=[[155,188,15],[139,172,15],[48,98,48],[15,56,15]];
+ function shot(name){const c=document.createElement('canvas');c.width=160;c.height=144;c.style.cssText='width:190px;image-rendering:pixelated;margin:1px';const x=c.getContext('2d'),im=x.createImageData(160,144);
+  for(let i=0;i<160*144;i++){const p=P[gb.fb[i]];im.data.set([p[0],p[1],p[2],255],i*4)}x.putImageData(im,0,0);const w=document.createElement('div');w.style.cssText='display:inline-block;color:#fff;font:11px monospace;margin:1px';w.appendChild(c);w.appendChild(document.createElement('br'));w.appendChild(document.createTextNode(name));document.getElementById('o').appendChild(w);L('shot',name,'frames',gb.frames,'pc',gb.pc.toString(16),'captures',gb.captures)}
+ const run=n=>{for(let i=0;i<n;i++)gb.runFrame()};
+ const press=(k,n=6)=>{gb.setKey(k,true);run(n);gb.setKey(k,false);run(20)};
+ try{
+  run(400);
+  press('start');run(60);
+  press('left');run(30);shot('menu left');
+  press('a');run(120);shot('viewfinder');
+  L('cam regs',[...gb.cam.slice(0,6)].map(x=>x.toString(16)).join(' '));
+  L('matrix',[...gb.cam.slice(6,6+48)].map(x=>x.toString(16)).join(' '));
+  gb.dbg=true;
+  gb.setKey('a',true);run(8);gb.setKey('a',false);run(30);shot('shutter+30');
+  run(60);shot('+90');
+  press('a');run(60);shot('A again');
+  press('a');run(100);shot('29 left');
+  press('b',8);run(60);shot('B');
+  press('b',8);run(60);shot('B2');
+  press('right');run(40);shot('right');
+  press('a');run(120);shot('view?');
+  press('a');run(60);shot('A on photo');
+  press('a',8);run(80);shot('photo');
+  press('a',8);run(80);shot('cross menu');
+  press('up',8);run(100);shot('up=print');L('xfers',gb.xfers);
+  
+  press('a',8);run(30);shot('A');L('xfers',gb.xfers);
+  press('a',8);run(30);shot('PRINT');L('xfers',gb.xfers);
+  for(let i=0;i<4;i++){run(60);shot('p'+i)}
+  for(const t of [180,300,600,1200]){run(t);shot('+'+t+'f')}
+  L('packets',JSON.stringify(gb.printer.log.slice(0,70)));L('total',gb.printer.log.length,'last',JSON.stringify(gb.printer.log.slice(-3)),'V',V)
+  {const c=document.createElement('canvas');c.width=128;c.height=112;c.style.cssText='width:256px;image-rendering:pixelated;margin:2px';const x=c.getContext('2d'),im=x.createImageData(128,112);
+   for(let y=0;y<112;y++)for(let xx=0;xx<128;xx++){const a=0x100+((y>>3)*16+(xx>>3))*16+(y&7)*2,b=7-(xx&7);const col=((gb.sram[a]>>b)&1)|(((gb.sram[a+1]>>b)&1)<<1);const p=P[col];im.data.set([p[0],p[1],p[2],255],(y*128+xx)*4)}x.putImageData(im,0,0);document.getElementById('o').appendChild(c)}
+  {const rows=[];for(let r=0;r<18;r++)rows.push([...gb.vram.slice(0x1800+r*32,0x1800+r*32+20)].map(x=>x.toString(16).padStart(2,'0')).join(' '));L('MAP '+rows.join(' / '));
+   const t=(a)=>[...gb.sram.slice(a,a+16)].map(x=>x.toString(16)).join(',');L('sramtile0',t(0x100),'sramtile(8,5)',t(0x100+(5*16+8)*16));
+   L('vram tile 0x80..0x83',[0x80,0x81,0x82].map(i=>[...gb.vram.slice(i*16,i*16+16)].map(x=>x.toString(16)).join(',')).join(' | '))}
+  {const find=(pat)=>{const r=[];for(let i=0;i<0x2000-16;i+=16){let ok=true;for(let k=0;k<16;k++)if(gb.vram[i+k]!==pat[k]){ok=false;break}if(ok)r.push((i/16).toString(16))}return r.slice(0,5).join(',')};
+   const t0=[...gb.sram.slice(0x100,0x110)];L('raw tile0 in vram at',find(t0),'inverted at',find(t0.map(x=>x^255)));
+   const hist={};for(let i=0;i<0x1800;i+=16){const k=[...gb.vram.slice(i,i+16)].join(',');hist[k]=(hist[k]||0)+1}L('distinct vram tiles',Object.keys(hist).length)}
+  {const hv=[0,0,0,0],hs=[0,0,0,0];for(let t=0;t<128;t++)for(let r=0;r<8;r++)for(let b=0;b<8;b++){hv[((gb.vram[t*16+r*2]>>b)&1)|(((gb.vram[t*16+r*2+1]>>b)&1)<<1)]++;hs[((gb.sram[0x100+t*16+r*2]>>b)&1)|(((gb.sram[0x100+t*16+r*2+1]>>b)&1)<<1)]++}
+   L('hist vram tiles0-127',hv.join(','),'sram tiles0-127',hs.join(','));
+   L('vram t0',[...gb.vram.slice(0,16)].map(x=>x.toString(16)).join(','),'sram t0',[...gb.sram.slice(0x100,0x110)].map(x=>x.toString(16)).join(','))}
+  L('BGP',gb.io[0x47].toString(16),'OBP',gb.io[0x48].toString(16),'LCDC',gb.io[0x40].toString(16));
+  L('cam regs',[...gb.cam.slice(0,6)].map(x=>x.toString(16)).join(' '),'exp');
+ }catch(e){L('ERR',e.stack)}
+ L('DONE');
+})();
+</script></body>

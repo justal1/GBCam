@@ -1,0 +1,7 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;padding:6px"></div><iframe id=f src="index.html" width=10 height=10 style="position:absolute;left:-99px"></iframe><script>
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,M=w.eval('Make'),P=w.eval('Prt'),L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+ M.show('origami');const d=M.panels.origami,v=n=>d.querySelector('[name='+n+']');
+ const cases=[['hat',{parts:'1'}],['fan',{}],['hat',{parts:'2'}],['snowflake',{parts:'1'}]];
+ for(const [m,o] of cases){v('model').value=m;v('model').dispatchEvent(new w.Event('change',{bubbles:true}));if(o.parts)v('parts').value=o.parts;try{const r=M.KINDS.origami.build(d,v);const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:300px';const cell=document.createElement('div');cell.style.cssText='color:#fff;font:11px monospace';cell.appendChild(c);cell.append(m+' '+JSON.stringify(o)+' '+(r.h/80).toFixed(1)+'cm');document.getElementById('g').appendChild(cell);L(m+' '+JSON.stringify(o)+': ok '+r.h+' dots ('+(r.h/80).toFixed(1)+' cm)')}catch(e){L(m+': ERROR '+e.message+' '+(e.stack||'').split('\n')[1])}}
+ L('DONE')}catch(e){document.getElementById('o').textContent+='FATAL '+e.message+'\n'+e.stack}};
+</script></body>

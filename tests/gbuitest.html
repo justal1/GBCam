@@ -1,0 +1,13 @@
+<!doctype html><base href="../"><body><pre id=o style="color:#0f0;font:12px monospace"></pre><iframe id=f src="index.html" width=420 height=900></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,d=w.document;
+ d.getElementById('tabgb').click();await new Promise(r=>setTimeout(r,300));
+ const bytes=new Uint8Array(await (await fetch('testroms/tetrisdx.gbc')).arrayBuffer());
+ const ok=await w.gbui.startBytes(bytes,false);L('started='+ok+' cgb='+w.gbui.gb.cgb+' mode select='+d.getElementById('gbmode').value);
+ w.gbui.tick(700);const px=d.getElementById('gbscreen').getContext('2d').getImageData(0,0,160,144).data;let col=0;for(let i=0;i<px.length;i+=4)if(Math.abs(px[i]-px[i+1])>20||Math.abs(px[i+1]-px[i+2])>20)col++;L('coloured pixels on screen: '+col);
+ d.getElementById('gbmode').value='dmg';const ok2=await w.gbui.startBytes(bytes,false);w.gbui.tick(700);L('forced mono: cgb='+w.gbui.gb.cgb);
+ // camera still starts and uses mono path
+ const cam=new Uint8Array(await (await fetch('rom/camera.gb')).arrayBuffer());d.getElementById('gbmode').value='auto';await w.gbui.startBytes(cam,false);L('camera cgb='+w.gbui.gb.cgb+' mbc='+w.gbui.gb.mbc);
+ // unsupported type message still works (MBC6 = 0x20)
+ L('DONE')}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>

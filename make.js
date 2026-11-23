@@ -710,7 +710,7 @@ const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0
       title: '☑ To-do list',
       html: () => field('items', 'One item per line', 'textarea', 'Buy milk\nCall mum\nFeed the cat', 'rows="5"') + field('blanks', 'Extra empty boxes', 'number', 3, 'min="0" max="20"') + field('head', 'Heading', 'text', 'TO DO'),
       build(r, v) {
-        const items = v('items').value.split('\n').map(s => s.trim()).filter(Boolean), blanks = Math.max(0, +v('blanks').value || 0), parts = [Prt.textBits(v('head').value || ' ', { size: 44 }), Prt.textBits(today({ weekday: 'long', day: 'numeric', month: 'long' }), { size: 20, bold: false })];
+        const items = v('items').value.split('\n').map(s => s.trim()).filter(Boolean), blanks = Math.min(40, Math.max(0, Math.floor(+v('blanks').value) || 0)), parts = [Prt.textBits(v('head').value || ' ', { size: 44 }), Prt.textBits(today({ weekday: 'long', day: 'numeric', month: 'long' }), { size: 20, bold: false })];
         const row = text => { const m = cvs(W, 10).getContext('2d'); m.font = `600 26px ${FONT}`; const lines = text ? wrapLines(m, text, W - 74) : ['']; const h = Math.max(48, lines.length * 32 + 16);
           return page(h, x => { x.lineWidth = 3; x.strokeRect(16, 12, 26, 26); x.font = `600 26px ${FONT}`; lines.forEach((l, i) => x.fillText(l, 58, 12 + i * 32)); x.setLineDash([2, 5]); x.lineWidth = 2; x.beginPath(); x.moveTo(10, h - 3); x.lineTo(W - 10, h - 3); x.stroke(); }); };
         for (const t of items) parts.push(row(t)); for (let i = 0; i < blanks; i++) parts.push(row('')); parts.push(Prt.blank(10)); return Prt.stack(parts);

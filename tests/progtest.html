@@ -1,0 +1,14 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;gap:8px;flex-wrap:wrap;padding:6px"></div>
+<script src="spectrum/z80.js"></script><script src="spectrum/basic.js"></script><script src="spectrum/spectrum.js"></script><script>
+(async()=>{const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+ try{const rom=new Uint8Array(await (await fetch('spectrum/48.rom')).arrayBuffer());
+ for(const [f,keys,frames] of [['bigletters',null,6000],['circles',null,9000],['spiro',null,9000],['flower',null,16000],['sinecos',null,3000],['sketchpad','sk',1200]]){
+  const sp=new Spectrum(rom),fr=n=>{for(let i=0;i<n;i++)sp.runFrame()},press=(ks,h=4,g=4)=>{for(const k of ks){const [r,b]=Spectrum.MATRIX[k];sp.setKey(r,b,true)}fr(h);for(const k of ks){const [r,b]=Spectrum.MATRIX[k];sp.setKey(r,b,false)}fr(g)};
+  fr(150);const src=await (await fetch('spectrum/programs/'+f+'.bas')).text(),tap=ZXBasic.programTape(f,src,-1);sp.insert(tap);
+  press(['J']);press(['SYM','P']);press(['SYM','P']);press(['ENTER']);fr(60);press(['R']);press(['ENTER']);
+  if(f==='bigletters'){fr(30);for(const k of ['H','E','L','L','O']){press(['CAPS',k]);}press(['SPACE']);for(const k of ['Z','X']){press(['CAPS',k])}press(['ENTER'])}
+  if(keys==='sk'){fr(20);const hold=(k,n)=>{const [r,b]=Spectrum.MATRIX[k];sp.setKey(r,b,true);fr(n);sp.setKey(r,b,false);fr(3)};hold('8',90);hold('7',60);hold('5',60);hold('6',60);hold('2',3);hold('8',40);hold('1',3);hold('7',30)}
+  fr(frames);let ink=0;for(let i=0;i<6144;i++){let v=sp.mem[0x4000+i];while(v){ink+=v&1;v>>=1}}
+  const bw=16,W=256+2*bw,H=192+2*bw,c=document.createElement('canvas');c.width=W;c.height=H;c.style.cssText='width:'+W*1.1+'px;image-rendering:pixelated';const x=c.getContext('2d'),im=x.createImageData(W,H);sp.draw(im,bw);x.putImageData(im,0,0);const d=document.createElement('div');d.style.cssText='color:#fff;font:11px monospace';d.appendChild(c);d.append(f+' ink pixels '+ink);document.getElementById('g').appendChild(d);L(f+': tokenised '+tap[1].length+' bytes, ink pixels '+ink+', border '+sp.border)}
+ L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}})();
+</script></body>

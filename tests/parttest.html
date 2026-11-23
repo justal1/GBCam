@@ -1,0 +1,14 @@
+<!doctype html><base href="../"><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=420 height=1000 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document,M=w.eval('Make'),P=w.eval('Prt'),mock=w.eval('mock'),$=id=>d.getElementById(id);
+ d.getElementById('tabmk').click();d.getElementById('mock').checked=true;M.show('party');const p=M.panels.party,q=n=>p.querySelector('[name='+n+']');q('what').value='bingo';q('what').dispatchEvent(new w.Event('change',{bubbles:true}));p.dispatchEvent(new w.Event('input',{bubbles:true}));await sleep(900);
+ const total=P.bitsCanvas?mock.sent.length:0;const rows=m=>m.filter(x=>x[2]===0xA2).length;
+ $('mkpart').click();await sleep(100);const mx=+$('mkpb').max;$('mkpa').value=Math.round(mx*.2);$('mkpa').dispatchEvent(new w.Event('input'));$('mkpb').value=Math.round(mx*.5);$('mkpb').dispatchEvent(new w.Event('input'));await sleep(200);
+ L('part info: '+$('mkpartinfo').textContent+' | meta: '+$('mkmeta').textContent);
+ mock.sent.length=0;await (async()=>{ $('mkprint').click();await sleep(1500);while(!$('pstop').hidden)await sleep(200)})();
+ L('part print rows sent: '+rows(mock.sent)+' (full sheet is '+(mx*8)+' rows)');
+ $('mkpall').click();await sleep(100);mock.sent.length=0;$('mkprint').click();await sleep(1500);$('pstop').click();while(!$('pstop').hidden)await sleep(200);await sleep(200);
+ const sent=mock.sent,r1=rows(sent),tail=sent.slice(-3).map(x=>x[2].toString(16));L('stopped: rows sent '+r1+' of '+(mx*8)+' ; last 3 cmds '+tail.join(',')+' (expect a1,a6,a3) ; rest button hidden='+$('mkrest').hidden+' ; toast: '+(d.getElementById('toast')||{}).textContent);
+ mock.sent.length=0;$('mkrest').click();await sleep(1000);while(!$('pstop').hidden)await sleep(300);await sleep(300);L('rest rows sent '+rows(mock.sent)+' ; first+rest = '+(r1+rows(mock.sent))+' ; hidden now='+$('mkrest').hidden);
+ L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}};
+</script></body>

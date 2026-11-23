@@ -1,0 +1,24 @@
+<!doctype html><base href="../"><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=390 height=800 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(800);const w=document.getElementById('f').contentWindow,d=w.document;
+ const cur=()=>['tabcam','tabfx','tabpr','tabmk','tabgb'].find(id=>d.getElementById(id).classList.contains('pri'));
+ const swipe=async(el,dx,dy=0,ms=150)=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+Math.min(40,r.height/2);const mk=(cx,cy)=>new w.Touch({identifier:1,target:el,clientX:cx,clientY:cy});
+  el.dispatchEvent(new w.TouchEvent('touchstart',{touches:[mk(x,y)],targetTouches:[mk(x,y)],changedTouches:[mk(x,y)],bubbles:true}));await sleep(ms);
+  el.dispatchEvent(new w.TouchEvent('touchend',{touches:[],targetTouches:[],changedTouches:[mk(x+dx,y+dy)],bubbles:true}));await sleep(250)};
+ const area=d.getElementById('camview2');
+ L('start tab: '+cur());
+ await swipe(area,-120);L('swipe left  -> '+cur());
+ await swipe(area,-120);L('swipe left  -> '+cur());
+ await swipe(area,120);L('swipe right -> '+cur());
+ await swipe(area,-30);L('tiny swipe   -> '+cur()+' (should not change)');
+ await swipe(area,-120,90);L('diagonal swipe -> '+cur()+' (should not change)');
+ await swipe(d.getElementById('view'),-120);L('swipe on camera picture -> '+cur()+' (should not change)');
+ await swipe(area,120);await swipe(area,120);await swipe(area,120);L('swipe right past first -> '+cur()+' (stays on Cam)');
+ // kid mode hides Print: swipe should skip it
+ d.getElementById('kidon').click();await sleep(100);d.querySelector('#kpin').value='4321';d.querySelector('#kgo').click();await sleep(150);
+ await swipe(d.getElementById('camview2'),-120);L('kid mode swipe left -> '+cur());await swipe(d.getElementById('printview')||d.body,-120);
+ await sleep(100);L('then -> '+cur()+' (Print tab skipped in kid mode)');
+ L('title='+d.title+' h1='+d.querySelector('h1').textContent.trim().slice(0,14));
+ L('DONE')}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>

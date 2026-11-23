@@ -1,0 +1,23 @@
+<!doctype html><base href="../"><body><pre id=o></pre><iframe id=f src="index.html" width=420 height=900 allow="camera"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{const w=document.getElementById('f').contentWindow,d=w.document,$=id=>d.getElementById(id);
+ const errs=[];w.addEventListener('error',e=>errs.push('onerror: '+e.message+' @'+(e.filename||'').split('/').pop()+':'+e.lineno));w.addEventListener('unhandledrejection',e=>errs.push('rejection: '+(e.reason&&e.reason.message||e.reason)));
+ await sleep(2500);L('camera ready? video '+ (d.querySelector('video')||{}).videoWidth);
+ // every select in the Cam view, every option, then a shutter press
+ let n=0;for(const id of ['look','res','levels','cdm','mode','pal','shotmode']){const s=$(id);if(!s)continue;for(const o of [...s.options]){s.value=o.value;s.dispatchEvent(new w.Event('change',{bubbles:true}));s.dispatchEvent(new w.Event('input',{bubbles:true}));await sleep(160);n++}}
+ L('cam selects exercised: '+n+' option changes; errors so far: '+errs.length);
+ for(const id of ['look','res','levels','cdm','mode','pal'])$(id)&&($(id).selectedIndex=0);
+ // effects: click every effect button on Fun tab
+ $('tabfx').click();await sleep(300);const fxb=[...d.querySelectorAll('#fxview button, #funview button')].filter(b=>b.offsetParent!==null).slice(0,200);L('buttons on Fun tab: '+fxb.length);
+ let c=0;for(const b of fxb){try{b.click();await sleep(70);c++}catch(e){L('fx click '+e.message)}}
+ L('fun buttons clicked '+c+'; errors: '+errs.length);
+ // photos: take 4 through the shutter, then use Make panels that need photos
+ $('tabcam').click();await sleep(300);for(let i=0;i<4;i++){$('shutter').click();await sleep(700)}
+ const M=w.eval('Make'),P=w.eval('Prt');$('tabmk').click();await sleep(300);
+ const run=async(k,setter)=>{M.show(k);await sleep(150);const p=M.panels[k];const q=n=>p.querySelector('[name='+n+']');if(setter)setter(q,p);const vs=[['default',null]];p.querySelectorAll('select[name]').forEach(s=>[...s.options].forEach(o=>vs.push([s.name+'='+o.value,()=>{s.value=o.value}])));p.querySelectorAll('input[type=checkbox][name]').forEach(c=>vs.push([c.name+' toggled',()=>{c.checked=!c.checked}]));
+  for(const [nm,fn] of vs){try{if(fn)fn();const r=await M.KINDS[k].build(p,x=>q(x),{});let ink=0;for(let i=0;i<r.bits.length;i+=5)ink+=r.bits[i];L(k+' ['+nm+'] ok h='+r.bits.length/384+(ink?'':' BLANK'))}catch(e){L(k+' ['+nm+'] '+(/TypeError|ReferenceError|undefined|NaN|not a function|RangeError/.test(e.message)?'BUG ':'msg ')+e.message+' | '+(e.stack||'').split('\n')[1].trim().slice(0,80))}}};
+ await run('strip');await run('sticker');await run('wanted',(q)=>{q('name')&&(q('name').value='Mittens')});
+ await run('code',(q)=>{q('text')&&(q('text').value='https://example.com')});
+ for(const [t,vals] of [['text',{text:'Hello world'}],['wifi',{ssid:'Home',pw:'secret12'}],['contact',{cname:'Ann',phone:'0123',email:'a@b.c'}],['bar',{text:'12345678'}]]){M.show('code');const p=M.panels.code;const s=p.querySelector('[name=type]');s.value=t;s.dispatchEvent(new w.Event('change',{bubbles:true}));p.querySelectorAll('input[name],textarea[name]').forEach(e=>{if(e.type!=='checkbox'&&e.type!=='range'&&e.name!=='type')e.value='Hello 12345678'});try{const r=await M.KINDS.code.build(p,x=>p.querySelector('[name='+x+']'),{});L('code '+t+' ok h='+r.bits.length/384)}catch(e){L('code '+t+' '+e.message)}}
+ L('page errors: '+(errs.length?'\n  '+[...new Set(errs)].join('\n  '):'none'));L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}};
+</script></body>

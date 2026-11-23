@@ -1,0 +1,10 @@
+<!doctype html><base href="../"><body><iframe id=f src="index.html" width=420 height=900></iframe><script>
+const f=document.getElementById('f');
+f.onload=async()=>{const L=(...a)=>console.log('T:',...a),w=f.contentWindow,d=w.document;
+ await new Promise(r=>setTimeout(r,1200));
+ d.getElementById('tabfx').click();
+ L('after fx click: fxpanel hidden=',d.getElementById('fxpanel').hidden,'camsettings hidden=',d.getElementById('camsettings').hidden,'fx tab class=',d.getElementById('tabfx').className);
+ d.querySelector('#fxgrid button[data-k=football]').click();
+ L('effect now',w.eval('Fx.st.name'));
+ L('DONE')}
+</script></body>

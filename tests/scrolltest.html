@@ -1,0 +1,7 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333;display:flex;gap:10px;padding:10px"><iframe id=f src="index.html" width=420 height=400 style="border:0"></iframe><div id=o></div><script>
+document.getElementById('f').onload=async()=>{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,M=w.eval('Make'),P=w.eval('Prt');
+const d=M.panels.scroll,v=n=>d.querySelector('[name='+n+']');
+for(const [h,m] of [['HEAR YE!','You are hereby invited to tea and cake.'],['CERTIFICATE','Awarded to Alan for excellent work on the cat printer app, with great honour.']]){v('head').value=h;v('msg').value=m;const r=M.KINDS.scroll.build(d,v);const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;margin:4px';document.getElementById('o').appendChild(c)}
+// as a photo frame
+const x=document.createElement('canvas');x.width=384;x.height=336;const g=x.getContext('2d');const gr=g.createLinearGradient(0,0,384,336);gr.addColorStop(0,'#fff');gr.addColorStop(1,'#444');g.fillStyle=gr;g.fillRect(0,0,384,336);g.fillStyle='#000';g.beginPath();g.arc(192,168,70,0,7);g.fill();M.constructor;w.eval('Overlay').frameFns.scroll(g,384,336);x.style.margin='4px';document.getElementById('o').appendChild(x);document.title='done'};
+</script></body>

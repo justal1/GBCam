@@ -1,0 +1,17 @@
+<!doctype html><base href="../"><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=390 height=800 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(800);const w=document.getElementById('f').contentWindow,d=w.document;
+ const cur=()=>['tabcam','tabfx','tabpr','tabmk','tabgb'].find(id=>d.getElementById(id).classList.contains('pri'));
+ const swipe=async(el,dx,dy=0,ms=150)=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+Math.min(40,r.height/2);const mk=(cx,cy)=>new w.Touch({identifier:1,target:el,clientX:cx,clientY:cy});
+  el.dispatchEvent(new w.TouchEvent('touchstart',{touches:[mk(x,y)],targetTouches:[mk(x,y)],changedTouches:[mk(x,y)],bubbles:true}));await sleep(ms);
+  el.dispatchEvent(new w.TouchEvent('touchend',{touches:[],targetTouches:[],changedTouches:[mk(x+dx,y+dy)],bubbles:true}));await sleep(250)};
+ const area=d.getElementById('camview2');
+ const vis=id=>w.getComputedStyle(d.getElementById(id)).display!=='none'&&!d.getElementById('kidbar').hidden;
+ L('normal mode: surprise visible='+vis('kidsurprise')+' lock visible='+(w.getComputedStyle(d.getElementById('kidparent')).display!=='none')+' counter visible='+(w.getComputedStyle(d.getElementById('kidcount')).display!=='none'));
+ const before=w.eval('Fx').st.name;d.getElementById('kidsurprise').click();await sleep(100);L('surprise picked: '+w.eval('Fx').st.name+' (was '+before+') tab='+w.eval('tab'));
+ d.getElementById('tabmk').click();await sleep(100);L('on Make tab bar hidden='+d.getElementById('kidbar').hidden);d.getElementById('tabfx').click();await sleep(100);L('on Fun tab bar hidden='+d.getElementById('kidbar').hidden);
+ d.getElementById('kidon').click();await sleep(100);d.querySelector('#kpin').value='4321';d.querySelector('#klim').value='5';d.querySelector('#kgo').click();await sleep(150);
+ L('kid mode: lock visible='+(w.getComputedStyle(d.getElementById('kidparent')).display!=='none')+' counter="'+d.getElementById('kidcount').textContent+'"');
+ L('DONE')}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>

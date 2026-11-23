@@ -1,0 +1,20 @@
+<!doctype html><base href="../"><body style="margin:0;background:#000;display:flex;flex-wrap:wrap"><pre id=o style="color:#0f0;width:100%;margin:0"></pre><script>
+const L=t=>document.getElementById('o').textContent+=t+'\n';
+const kinds=['sticker','code','scroll','maze','todo','draw'];
+(async()=>{
+ for(const k of kinds){
+  localStorage.setItem('catcam-mk',k);localStorage.setItem('catcam-tab','mk');
+  localStorage.setItem('catcam-make',JSON.stringify({vals:{code:{type:'wifi',a:'HomeNet',size:'260',cap:'Guest Wi-Fi'}}}));
+  const f=document.createElement('iframe');f.src='index.html?k='+k;f.width=420;f.height=1000;f.style.border='0';document.body.appendChild(f);
+  await new Promise(r=>f.onload=r);await new Promise(r=>setTimeout(r,900));
+  const w=f.contentWindow,d=w.document;
+  if(k==='sticker'){ // give it a fake photo through the file-less path
+    const bits=new Uint8Array(384*336);for(let i=0;i<bits.length;i++)bits[i]=((i%384)/9|0)%2^(((i/384|0)/9|0)%2);
+    w.eval('lastBits=null');w.eval('lastBits=new Uint8Array(384*336)');const lb=w.eval('lastBits');lb.set(bits);w.eval('Make.refresh()');await new Promise(r=>setTimeout(r,500));}
+  const cv=d.querySelector('#mkpaper canvas');
+  L(k+': tabhidden='+d.getElementById('makeview').hidden+' preview='+(cv?cv.width+'x'+cv.height:'none')+' meta="'+d.getElementById('mkmeta').textContent+'" err='+(d.getElementById('mkerr').hidden?'-':d.getElementById('mkerr').textContent)+' copies btn ok='+!!d.getElementById('mkplus'));
+  if(k==='scroll'){d.getElementById('mkplus').click();d.getElementById('mkplus').click();await new Promise(r=>setTimeout(r,100));L('copies meta: '+d.getElementById('mkmeta').textContent)}
+ }
+ L('DONE');
+})();
+</script></body>

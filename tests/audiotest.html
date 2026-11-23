@@ -1,0 +1,13 @@
+<!doctype html><base href="../"><meta charset="utf-8"><body style="background:#333"><div id=o></div><script src="gb.js"></script><script>
+(async()=>{
+ const L=(...a)=>console.log('T:',...a);
+ const rom=new Uint8Array(await (await fetch('rom/camera.gb')).arrayBuffer());
+ const gb=new GameBoy(rom);L('mbc',gb.mbc,'ramBytes',gb.ramBytes);
+ gb.apu.on=true;gb.apu.sampleCycles=4194304/48000;
+ let peak=0,nz=0,nan=0,sumsq=0,n=0;const L1=new Float32Array(1024),R1=new Float32Array(1024);
+ for(let f=0;f<900;f++){gb.runFrame();while(gb.apu.w-gb.apu.r>=2048){gb.apu.pull(L1,R1);for(let i=0;i<1024;i++){const v=L1[i];if(v!==v)nan++;if(Math.abs(v)>peak)peak=Math.abs(v);if(v!==0)nz++;sumsq+=v*v;n++}}
+   if(f===450||f===899){const c=document.createElement('canvas');c.width=160;c.height=144;const x=c.getContext('2d'),im=x.createImageData(160,144);const P=[[155,188,15],[139,172,15],[48,98,48],[15,56,15]];for(let i=0;i<160*144;i++){const p=P[gb.fb[i]];im.data.set([p[0],p[1],p[2],255],i*4)}x.putImageData(im,0,0);document.getElementById('o').appendChild(c)}}
+ L('samples',n,'nonzero',nz,'peak',peak.toFixed(3),'rms',Math.sqrt(sumsq/n).toFixed(4),'nan',nan,'NR52',gb.apu.read(0x26).toString(16),'NR50',gb.apu.nr50.toString(16),'NR51',gb.apu.nr51.toString(16));
+ L('DONE');
+})();
+</script></body>

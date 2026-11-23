@@ -1,0 +1,14 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;gap:8px;flex-wrap:wrap;padding:6px"></div>
+<script src="spectrum/z80.js"></script><script src="spectrum/basic.js"></script><script src="spectrum/spectrum.js"></script><script>
+(async()=>{const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+ try{const rom=new Uint8Array(await (await fetch('spectrum/48.rom')).arrayBuffer()),sp=new Spectrum(rom);
+ const show=(name,bw=16)=>{const W=256+2*bw,H=192+2*bw,c=document.createElement('canvas');c.width=W;c.height=H;c.style.cssText='width:'+W*1.5+'px;image-rendering:pixelated';const x=c.getContext('2d'),im=x.createImageData(W,H);sp.draw(im,bw);x.putImageData(im,0,0);const d=document.createElement('div');d.style.cssText='color:#fff;font:11px monospace';d.appendChild(c);d.append(name);document.getElementById('g').appendChild(d)};
+ const frames=n=>{for(let i=0;i<n;i++)sp.runFrame()};const press=(keys,hold=4,gap=4)=>{for(const k of keys){const [r,b]=Spectrum.MATRIX[k];sp.setKey(r,b,true)}frames(hold);for(const k of keys){const [r,b]=Spectrum.MATRIX[k];sp.setKey(r,b,false)}frames(gap)};
+ frames(150);const src=await (await fetch('testroms/manual_flag.bas')).text(),tap=ZXBasic.programTape('flag',src,-1);L('manual listing: '+ZXBasic.compile(src).lines+' lines -> '+tap[1].length+' bytes');sp.insert(tap);
+ press(['J']);press(['SYM','P']);press(['SYM','P']);press(['ENTER']);frames(60);L('tape pos '+sp.tape.pos+'/'+sp.tape.blocks.length);
+ press(['R']);press(['ENTER']);let n=0,done=false;while(n<6000&&!done){frames(1);n++;if(n>200&&n%50===0){const bottom=[...sp.mem.slice(0x5800+21*32,0x5800+22*32)];}}
+ show('manual flag after '+n+' frames');
+ // report line? read the error report from the screen text rows
+ let info=null;sp.onPrint=(p)=>{info=p.bits.reduce((a,b)=>a+b,0);const cc=document.createElement('canvas');cc.width=p.w;cc.height=p.h;const cx=cc.getContext('2d'),im=cx.createImageData(p.w,p.h);for(let i=0;i<p.w*p.h;i++){const v=p.bits[i]?0:255;im.data.set([v,v,v,255],i*4)}cx.putImageData(im,0,0);cc.style.cssText='background:#fff;width:384px;image-rendering:pixelated';document.getElementById('g').appendChild(cc)};
+ press(['Z']);press(['ENTER']);frames(20);L('COPY ink pixels: '+info);L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}})();
+</script></body>

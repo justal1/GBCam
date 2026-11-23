@@ -1,0 +1,6 @@
+<!doctype html><base href="../"><body style="margin:0;background:#333"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;gap:14px;align-items:flex-start;padding:8px"></div><iframe id=f src="index.html" width=10 height=10 style="position:absolute;left:-99px"></iframe><script>
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow,A=w.eval('Ansi'),P=w.eval('Prt'),L=t=>document.getElementById('o').textContent+=t+'\n';await A.ready();
+ const doc=A.ART.nfo();L('NFO '+doc.cols+'x'+doc.rows+' textLike='+A.isTextLike(doc));
+ for(const [name,o] of [['dither',{dir:'up',look:'paper'}],['crisp threshold',{dir:'up',look:'paper',crisp:true}]]){const r=A.toBits(doc,o);L(name+': '+r.h+' dots = '+(r.h/80).toFixed(1)+' cm');const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:384px';document.getElementById('g').appendChild(c)}
+ L('DONE')}catch(e){document.getElementById('o').textContent+='FATAL '+e.message+'\n'+e.stack}};
+</script></body>

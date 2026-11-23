@@ -1,8 +1,0 @@
-<!doctype html><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=420 height=900 style="border:0"></iframe><script>
-const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document,M=w.eval('Make');
- d.getElementById('tabmk').click();
- for(const [kind,what] of [['party','bingo'],['labels','ruler'],['origami',null],['planner','month']]){M.show(kind);if(what){const p=M.panels[kind],q=p.querySelector('[name=what]');q.value=what;q.dispatchEvent(new w.Event('change',{bubbles:true}));p.dispatchEvent(new w.Event('input',{bubbles:true}))}await sleep(900);
-  const c=d.querySelector('#mkpaper canvas'),r=c.getBoundingClientRect();L(kind+(what?':'+what:'')+' intrinsic '+c.width+'x'+c.height+' shown '+Math.round(r.width)+'x'+Math.round(r.height)+' -> aspect error '+(Math.abs((r.width/r.height)/(c.width/c.height)-1)*100).toFixed(1)+'%')}
- L('DONE')}catch(e){L('FATAL '+e.message)}};
-</script></body>

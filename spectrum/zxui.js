@@ -2,6 +2,7 @@
 // ZX tab: the emulator screen, an on-screen Spectrum keyboard, a tape library (with the UK flag program), and printing to the cat printer.
 const ZX = (() => {
   const $$ = id => document.getElementById(id), LIB = 'catcam-zxlib';
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let spec = null, ready = null, running = true, turbo = 1, acc = 0, lastT = 0, started = false, ac = null, node = null, queue = [], muted = true;
   const BW = 32, SW = 256 + 2 * BW, SH = 192 + 2 * BW;
   let scr, sx, img, lib = [], listings = {}, autoRun = false, lineBuf = [], lineTimer = 0, lastPage = null;
@@ -86,7 +87,7 @@ const ZX = (() => {
     const box = $$('zxlib'); box.innerHTML = '';
     const items = BUILTIN.map(b => Object.assign({ builtin: true }, b)).concat(lib);
     for (const e of items) {
-      const d = document.createElement('div'); d.className = 'zxitem'; d.innerHTML = `<span>${e.builtin ? e.icon + ' ' : '💾 '}${e.name}</span>`;
+      const d = document.createElement('div'); d.className = 'zxitem'; d.innerHTML = `<span>${e.builtin ? e.icon + ' ' : '💾 '}${esc(e.name)}</span>`;
       const mk = (txt, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; if (cls) b.className = cls; b.onclick = fn; d.appendChild(b); };
       const blocks = () => e.builtin ? ZXBasic.programTape(e.tap, listings[e.id] || '10 REM missing', -1) : blocksOf(e);
       mk('▶ Load & run', async () => { insert(blocks(), e.name, true); await typeKeys(LOAD_SEQ); }, 'pri'); mk('Insert', () => insert(blocks(), e.name, false));
@@ -96,7 +97,7 @@ const ZX = (() => {
       box.appendChild(d);
     }
   }
-  function showListing(name, text) { let d = $$('kiddlg'); if (d) d.remove(); d = document.createElement('div'); d.id = 'kiddlg'; d.innerHTML = `<div class="kidcard"><h3>${name}</h3><pre style="white-space:pre-wrap;font:12px/1.35 ui-monospace,monospace;max-height:55vh;overflow:auto;background:#111;padding:8px;border-radius:8px">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre><div class="row"><button type="button" id="zxcopylist">Copy</button><button type="button" id="zxclose" class="pri">Close</button></div></div>`; document.body.appendChild(d); d.onclick = e => { if (e.target === d) d.remove(); }; $$('zxclose').onclick = () => d.remove(); $$('zxcopylist').onclick = async () => { try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (e) { } }; }
+  function showListing(name, text) { let d = $$('kiddlg'); if (d) d.remove(); d = document.createElement('div'); d.id = 'kiddlg'; d.innerHTML = `<div class="kidcard"><h3>${esc(name)}</h3><pre style="white-space:pre-wrap;font:12px/1.35 ui-monospace,monospace;max-height:55vh;overflow:auto;background:#111;padding:8px;border-radius:8px">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre><div class="row"><button type="button" id="zxcopylist">Copy</button><button type="button" id="zxclose" class="pri">Close</button></div></div>`; document.body.appendChild(d); d.onclick = e => { if (e.target === d) d.remove(); }; $$('zxclose').onclick = () => d.remove(); $$('zxcopylist').onclick = async () => { try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (e) { } }; }
 
 
   // ---------- opening files: tapes, snapshots, ROMs, and ZIPs of those ----------
@@ -125,9 +126,9 @@ const ZX = (() => {
       const items = ZXFiles.zipList(bytes).map(e => ({ e, kind: kindOf(e.name, e.size) })).filter(i => i.kind);
       if (!items.length) throw new Error('Nothing the Spectrum can use in that ZIP (I look for .tap .tzx .z80 .sna and 16K .rom files)');
       if (items.length === 1) { await useData(items[0].e.name, await ZXFiles.zipRead(bytes, items[0].e)); return; }
-      let d = $$('kiddlg'); if (d) d.remove(); d = document.createElement('div'); d.id = 'kiddlg'; d.innerHTML = `<div class="kidcard"><h3>${file.name}</h3><div class="sub">Pick what to use:</div><div id="zxpick"></div><div class="row"><button type="button" id="zxpclose">Cancel</button></div></div>`; document.body.appendChild(d);
+      let d = $$('kiddlg'); if (d) d.remove(); d = document.createElement('div'); d.id = 'kiddlg'; d.innerHTML = `<div class="kidcard"><h3>${esc(file.name)}</h3><div class="sub">Pick what to use:</div><div id="zxpick"></div><div class="row"><button type="button" id="zxpclose">Cancel</button></div></div>`; document.body.appendChild(d);
       $$('zxpclose').onclick = () => d.remove(); d.onclick = ev => { if (ev.target === d) d.remove(); };
-      for (const it of items) { const row = document.createElement('div'); row.className = 'zxitem'; const label = { tape: 'Add tape', snap: 'Load snapshot', rom: 'Use as ROM' }[it.kind]; row.innerHTML = `<span>${it.e.name} <small>(${it.e.size} bytes)</small></span>`; const b = document.createElement('button'); b.type = 'button'; b.className = 'pri'; b.textContent = label; b.onclick = async () => { try { await useData(it.e.name, await ZXFiles.zipRead(bytes, it.e)); d.remove(); } catch (er) { toast(er.message, 'bad'); } }; row.appendChild(b); $$('zxpick').appendChild(row); }
+      for (const it of items) { const row = document.createElement('div'); row.className = 'zxitem'; const label = { tape: 'Add tape', snap: 'Load snapshot', rom: 'Use as ROM' }[it.kind]; row.innerHTML = `<span>${esc(it.e.name)} <small>(${+it.e.size} bytes)</small></span>`; const b = document.createElement('button'); b.type = 'button'; b.className = 'pri'; b.textContent = label; b.onclick = async () => { try { await useData(it.e.name, await ZXFiles.zipRead(bytes, it.e)); d.remove(); } catch (er) { toast(er.message, 'bad'); } }; row.appendChild(b); $$('zxpick').appendChild(row); }
     } catch (e) { toast(e.message, 'bad'); }
   }
 
