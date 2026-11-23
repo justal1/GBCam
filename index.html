@@ -106,9 +106,23 @@ textarea{resize:vertical}
 #mkcopies output{flex:1;text-align:center;font-weight:700}
 #mkprint{flex:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* ---- Kid mode ---- */
+#kidbar{display:none}
+body.kid #kidbar{display:flex;gap:8px;align-items:center;margin:8px 0}
+#kidbar #kidsurprise{flex:1;padding:12px;font-size:16px;border-radius:14px}
+#kidbar #kidparent{flex:0 0 48px;padding:10px 0}
+#kidcount{white-space:nowrap}
+body.kid #tabpr,body.kid .parentonly,body.kid #camsettings,body.kid #install,body.kid #albbar button#albbatch{display:none!important}
+body.kid #mkchips button[data-kind=code],body.kid #mkchips button[data-kind=scan],body.kid #mkchips button[data-kind=todo],body.kid #mkchips button[data-kind=day]{display:none}
+body.kid #shutter{flex:0 0 92px;height:92px}
+body.kid button,body.kid select{min-height:46px}
+#kiddlg{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:90;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 16px}
+#kiddlg .kidcard{background:var(--panel);border-radius:14px;padding:16px;max-width:420px;width:100%}
+#kiddlg h3{margin:0 0 6px}
+#kiddlg input{margin:6px 0}
 </style></head>
 <body>
-<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v19</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v20</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
 
 <div id="camview">
@@ -256,10 +270,10 @@ textarea{resize:vertical}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=19"></script>
-<script src="fx.js?v=19"></script>
-<script src="fx2.js?v=19"></script>
-<script src="goo.js?v=19"></script>
+<script src="gbc.js?v=20"></script>
+<script src="fx.js?v=20"></script>
+<script src="fx2.js?v=20"></script>
+<script src="goo.js?v=20"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -482,12 +496,13 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=19"></script>
-<script src="overlay.js?v=19"></script>
-<script src="shots.js?v=19"></script>
-<script src="album.js?v=19"></script>
-<script src="vendor/qrcode.js?v=19"></script>
-<script src="make.js?v=19"></script>
-<script src="gb.js?v=19"></script>
-<script src="gbui.js?v=19"></script>
+<script src="print.js?v=20"></script>
+<script src="overlay.js?v=20"></script>
+<script src="shots.js?v=20"></script>
+<script src="album.js?v=20"></script>
+<script src="vendor/qrcode.js?v=20"></script>
+<script src="make.js?v=20"></script>
+<script src="gb.js?v=20"></script>
+<script src="gbui.js?v=20"></script>
+<script src="kid.js?v=20"></script>
 </body></html>

@@ -76,12 +76,13 @@ const Prt = (() => {
   // ---- shared plumbing ----
   let last = null;
   async function printBits(bits, label) {
+    if (window.Kid && !Kid.canPrint()) return false;
     const c = cfg(), pr = $('prog'), bar = pr.firstElementChild; pr.style.display = 'block'; bar.style.width = 0;
     try {
       const job = buildJob(bits, c); log((label || 'print') + ':', job.length, 'packets');
       if (!c.mock && !ble.wc) await bleConnect();
       await (c.mock ? mockSend : bleSend)(job, c, p => bar.style.width = (p * 100) + '%');
-      log((label || 'print') + ' done'); last = { bits, label }; toast('Printed ✓'); if (navigator.vibrate) navigator.vibrate(25); return true;
+      log((label || 'print') + ' done'); last = { bits, label }; toast('Printed ✓'); if (window.Kid) Kid.printed(); if (navigator.vibrate) navigator.vibrate(25); return true;
     } catch (e) { log('PRINT ERROR', e.message); last = { bits, label }; toast('Print failed: ' + e.message + ' — see Log at the bottom', 'bad'); return false; }
     finally { setTimeout(() => { pr.style.display = 'none'; bar.style.width = 0; }, 800); }
   }

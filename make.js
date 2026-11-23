@@ -262,6 +262,52 @@ const Make = (() => {
   }
   function scanStop() { scan.running = false; cancelAnimationFrame(scan.raf); }
 
+
+  // ---------------- colouring pages, jokes, badges ----------------
+  function mandala(detail, folds) {
+    const S = 384, cx = S / 2, cy = S / 2, n = folds || [6, 8, 8, 10, 12][rnd(5)], layers = 3 + detail * 2, kinds = shuffle(['petal', 'dots', 'scallop', 'diamond', 'star', 'loop', 'tear', 'zig']);
+    return page(S + 16, x => {
+      x.translate(0, 8); x.lineWidth = detail === 3 ? 2 : 3; x.lineJoin = x.lineCap = 'round'; x.strokeStyle = '#000'; x.fillStyle = '#fff';
+      let r0 = 14 + rnd(10); x.beginPath(); x.arc(cx, cy, r0, 0, 7); x.stroke();
+      const maxR = S / 2 - 10, step = (maxR - r0) / layers;
+      for (let L = 0; L < layers; L++) {
+        const r1 = r0 + step * (L + 1), kind = kinds[L % kinds.length], rm = (r0 + r1) / 2, w = (r1 - r0) * 0.5, big = n * (detail > 2 && rnd(2) ? 2 : 1);
+        for (let k = 0; k < big; k++) {
+          const a = k / big * Math.PI * 2 + (L % 2 ? Math.PI / big : 0); x.save(); x.translate(cx, cy); x.rotate(a);
+          if (kind === 'petal') { x.beginPath(); x.moveTo(r0 + 2, 0); x.quadraticCurveTo(rm, -w * 1.1 * (Math.PI * rm / big / (w + 1)) / 2, r1 - 2, 0); x.quadraticCurveTo(rm, w * 1.1 * (Math.PI * rm / big / (w + 1)) / 2, r0 + 2, 0); x.stroke(); }
+          else if (kind === 'tear') { const ww = Math.min(w * 0.9, Math.PI * rm / big * 0.45); x.beginPath(); x.moveTo(r1 - 1, 0); x.quadraticCurveTo(rm + ww, -ww * 1.2, r0 + ww, -ww * 0.3); x.arc(r0 + ww, 0, ww * 0.3, -Math.PI / 2, Math.PI / 2, true); x.quadraticCurveTo(rm + ww, ww * 1.2, r1 - 1, 0); x.stroke(); }
+          else if (kind === 'dots') { x.beginPath(); x.arc(rm, 0, Math.min(w * 0.55, Math.PI * rm / big * 0.4), 0, 7); x.stroke(); if (detail > 1) { x.beginPath(); x.arc(rm, 0, Math.min(w * 0.55, Math.PI * rm / big * 0.4) * 0.4, 0, 7); x.stroke(); } }
+          else if (kind === 'scallop') { const ww = Math.PI * r1 / big; x.beginPath(); x.arc(r1, 0, ww * 0.55, Math.PI / 2, -Math.PI / 2, false); x.stroke(); }
+          else if (kind === 'diamond') { const ww = Math.min(w * 0.8, Math.PI * rm / big * 0.45); x.beginPath(); x.moveTo(rm - w, 0); x.lineTo(rm, -ww); x.lineTo(rm + w, 0); x.lineTo(rm, ww); x.closePath(); x.stroke(); }
+          else if (kind === 'star') { const R = Math.min(w, Math.PI * rm / big * 0.5), p = 5; x.beginPath(); for (let i = 0; i < p * 2; i++) { const aa = i * Math.PI / p, rr = i % 2 ? R * 0.45 : R; x[i ? 'lineTo' : 'moveTo'](rm + Math.cos(aa) * rr, Math.sin(aa) * rr); } x.closePath(); x.stroke(); }
+          else if (kind === 'loop') { x.beginPath(); x.moveTo(r0 + 2, 0); x.bezierCurveTo(rm, -w * 1.6, rm + w, -w * 1.6, r1 - 2, 0); x.bezierCurveTo(rm + w, w * 1.6, rm, w * 1.6, r0 + 2, 0); x.stroke(); }
+          else { x.beginPath(); x.moveTo(r0 + 2, 0); x.lineTo(rm, -w * 0.7); x.lineTo(rm + w * 0.2, 0); x.lineTo(rm, w * 0.7); x.lineTo(r1 - 2, 0); x.stroke(); }
+          x.restore();
+        }
+        x.beginPath(); x.arc(cx, cy, r1, 0, 7); x.stroke(); r0 = r1;
+      }
+    });
+  }
+  const JOKES = [['What do you call a sleeping bull?', 'A bulldozer!'], ['Why did the scarecrow win an award?', 'He was outstanding in his field!'], ['What do you call cheese that is not yours?', 'Nacho cheese!'], ['Why can’t a bicycle stand up by itself?', 'It is two tired!'], ['What do you get when you cross a snowman and a vampire?', 'Frostbite!'], ['Why did the cookie go to the doctor?', 'It felt crummy!'], ['What did the ocean say to the beach?', 'Nothing, it just waved!'], ['Why do bees have sticky hair?', 'They use honeycombs!'], ['What do you call a fish with no eyes?', 'A fsh!'], ['Why was the math book sad?', 'It had too many problems!'], ['What do elves learn in school?', 'The elf-abet!'], ['How does a penguin build its house?', 'Igloos it together!'], ['Why did the computer go to the doctor?', 'It had a virus!'], ['What is a ghost’s favourite pudding?', 'Boo-berry pie!'], ['What do you call a dinosaur that never gives up?', 'Try-try-try-ceratops!'], ['Why did the banana go to the doctor?', 'It was not peeling well!'], ['What do you call a pig that does karate?', 'A pork chop!'], ['Why do seagulls fly over the sea?', 'If they flew over the bay they would be bagels!'], ['What did the left eye say to the right eye?', 'Between us, something smells!'], ['What is a robot’s favourite snack?', 'Micro-chips!'], ['Why is the moon so rich?', 'It has lots of quarters!'], ['What do you call a cat on the beach?', 'Sandy Claws!'], ['Why did the golfer bring two pairs of trousers?', 'In case he got a hole in one!'], ['What did one wall say to the other?', 'I will meet you at the corner!'], ['What kind of music do mummies love?', 'Wrap!'], ['Why did the teddy bear say no to dessert?', 'It was already stuffed!'], ['What has ears but cannot hear?', 'A field of corn!'], ['Why do ducks make great detectives?', 'They always quack the case!'], ['What do you call a sleeping dinosaur?', 'A dino-snore!'], ['What did the traffic light say to the car?', 'Do not look, I am changing!']];
+  function jokeSlip(q, a) {
+    const m = cvs(W, 10).getContext('2d'); m.font = `700 28px ${FONT}`; const ql = wrapLines(m, q, W - 40); m.font = `800 30px ${FONT}`; const al = wrapLines(m, a, W - 40), top = page(60 + ql.length * 36 + 30, x => { x.textAlign = 'center'; x.font = `800 26px ${FONT}`; x.fillText('😂 JOKE TIME', W / 2, 8); x.font = `700 28px ${FONT}`; ql.forEach((l, i) => x.fillText(l, W / 2, 56 + i * 36)); x.font = `600 16px ${FONT}`; x.fillText('(turn the paper round for the answer)', W / 2, 60 + ql.length * 36 + 4); });
+    const bot = page(al.length * 38 + 40, x => { x.textAlign = 'center'; x.font = `800 30px ${FONT}`; al.forEach((l, i) => x.fillText(l, W / 2, 16 + i * 38)); });
+    const c = cvs(W, bot.h), cx = c.getContext('2d'); cx.translate(W, bot.h); cx.rotate(Math.PI); cx.drawImage(bot.canvas, 0, 0);
+    const flipped = { bits: Prt.canvasBits(c), h: bot.h };
+    return Prt.stack([top, gapRow(), flipped, Prt.blank(8)]);
+  }
+  function badge(name, style, sub) {
+    const m = cvs(W, 10).getContext('2d'); let size = 110; for (; size > 30; size -= 4) { m.font = `800 ${size}px ${FONT}`; if (m.measureText(name).width < W - 60) break; }
+    const hasSub = !!sub, h = 70 + size + 24 + (hasSub ? 40 : 0) + 24;
+    return page(h, x => {
+      x.textAlign = 'center'; x.lineWidth = 6; x.strokeRect(6, 6, W - 12, h - 12);
+      if (style === 'band') { x.fillStyle = '#000'; x.fillRect(6, 6, W - 12, 62); x.fillStyle = '#fff'; x.font = `800 40px ${FONT}`; x.fillText('HELLO', W / 2, 16); x.fillStyle = '#000'; x.font = `700 22px ${FONT}`; x.fillText('my name is', W / 2, 78); }
+      else { x.font = `800 34px ${FONT}`; x.fillText('HELLO', W / 2, 18); x.font = `700 22px ${FONT}`; x.fillText('my name is', W / 2, 60); if (style === 'star') { x.font = `700 26px ${FONT}`; x.fillText('★ ★ ★ ★ ★ ★ ★ ★ ★', W / 2, 92); } }
+      x.font = `800 ${size}px ${FONT}`; x.fillText(name, W / 2, style === 'band' ? 100 : 112);
+      if (hasSub) { x.font = `600 24px ${FONT}`; x.fillText(sub, W / 2, h - 52); }
+    });
+  }
+
   // ---------------- strip footer (also used by Shots.strip) ----------------
   function stripFooter() {
     const f = saved.footer || { date: true, caption: '', qr: '' }, parts = [];
@@ -381,6 +427,21 @@ const Make = (() => {
         const t = Prt.textBits(txt, { size: txt.length > 6 ? 56 : 84 }); return Prt.stack([Prt.blank(10), t, Prt.blank(10)]);
       },
     },
+    colour: {
+      title: '🖍 Colouring page',
+      html: () => sel('detail', 'How detailed?', [['1', 'Easy (big shapes)'], ['2', 'Medium'], ['3', 'Tricky (lots of detail)']], '2') + sel('folds', 'Pattern', [['0', 'Surprise me'], ['6', '6-fold'], ['8', '8-fold'], ['12', '12-fold']], '0') + `<div class="sub">A new pattern to colour in every time. Press New for another.</div>`,
+      build(r, v) { return mandala(+v('detail').value, +v('folds').value); },
+    },
+    joke: {
+      title: '😂 Joke slip',
+      html: () => `<div class="sub">A joke with the punchline printed upside down at the bottom, so you read it by turning the paper round. Press New for another.</div>`,
+      build() { const [q, a] = JOKES[rnd(JOKES.length)]; return jokeSlip(q, a); },
+    },
+    badge: {
+      title: '📛 Name badge',
+      html: () => field('name', 'Name', 'text', 'ALEX', 'maxlength="14"') + sel('style', 'Style', [['band', 'Black band'], ['frame', 'Plain frame'], ['star', 'Stars']], 'band') + field('sub', 'Extra line (optional)', 'text', '', 'maxlength="26" placeholder="e.g. Chief snack officer"'),
+      build(r, v) { return badge(v('name').value || ' ', v('style').value, v('sub').value); },
+    },
     scroll: {
       title: '📜 Scroll message',
       html: () => field('head', 'Title', 'text', 'HEAR YE!', 'maxlength="30"') + field('msg', 'Message', 'textarea', 'You are hereby invited to tea and cake.', 'rows="4"') + sel('size', 'Text size', [['22', 'Small'], ['28', 'Medium'], ['36', 'Large']], '28')
@@ -449,7 +510,7 @@ const Make = (() => {
   // ---------------- UI ----------------
   const panels = {}, st = { kind: 'strip', res: null, tok: 0, timer: 0, copies: 1 };
   const NOPERSIST = { code: ['b', 'c'] }; // never store Wi-Fi passwords / contact details
-  const RANDOM = ['maze', 'sudoku', 'words', 'dice', 'day'];
+  const RANDOM = ['maze', 'sudoku', 'words', 'dice', 'day', 'colour', 'joke'];
   const vals = d => { const o = {}; d.querySelectorAll('input,select,textarea').forEach(e => { if (e.name && e.type !== 'file') o[e.name] = e.type === 'checkbox' ? e.checked : e.value; }); return o; };
   function restore(k, d) { const o = (saved.vals || {})[k]; if (!o) return; d.querySelectorAll('input,select,textarea').forEach(e => { if (!(e.name in o) || e.type === 'file') return; if (e.type === 'checkbox') e.checked = !!o[e.name]; else e.value = o[e.name]; }); }
   function persist(k, d) { const o = vals(d); for (const n of NOPERSIST[k] || []) delete o[n]; (saved.vals = saved.vals || {})[k] = o; store(); }

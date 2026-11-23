@@ -1,0 +1,28 @@
+<!doctype html><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><div id=g style="display:flex;flex-wrap:wrap;gap:6px"></div><iframe id=f src="index.html" width=420 height=1000 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,900));
+ const w=document.getElementById('f').contentWindow,d=w.document,M=w.eval('Make'),K=w.eval('Kid'),P=w.eval('Prt');
+ const q=(id)=>d.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+ // new Make kinds
+ for(const k of ['colour','joke','badge']){M.show(k);const dd=M.panels[k],v=n=>dd.querySelector('[name='+n+']');const r=M.KINDS[k].build(dd,v);L(k+' ok h='+r.h+' ink='+r.bits.reduce((a,b)=>a+b,0));const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:200px';document.getElementById('g').appendChild(c)}
+ {const dd=M.panels.colour,v=n=>dd.querySelector('[name='+n+']');v('detail').value='3';const r=M.KINDS.colour.build(dd,v);const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:200px';document.getElementById('g').appendChild(c)}
+ {const dd=M.panels.badge,v=n=>dd.querySelector('[name='+n+']');v('name').value='MAYA';v('style').value='star';v('sub').value='Chief snack officer';const r=M.KINDS.badge.build(dd,v);const c=P.bitsCanvas(r.bits);c.style.cssText='background:#fff;width:200px';document.getElementById('g').appendChild(c)}
+ // kid mode setup through the real dialogs
+ q('kidon').click();await sleep(100);d.querySelector('#kpin').value='1234';d.querySelector('#klim').value='2';d.querySelector('#kgo').click();await sleep(150);
+ L('kid on='+K.on+' body.kid='+d.body.classList.contains('kid')+' printTab hidden='+(w.getComputedStyle(q('tabpr')).display==='none')+' camsettings hidden='+(w.getComputedStyle(q('camsettings')).display==='none')+' log hidden='+([...d.querySelectorAll('details')].filter(x=>/Log|Printer/.test(x.textContent.slice(0,20))).every(x=>w.getComputedStyle(x).display==='none')));
+ L('kidbar visible='+(w.getComputedStyle(q('kidbar')).display!=='none')+' count="'+q('kidcount').textContent+'"');
+ q('kidsurprise').click();await sleep(100);L('surprise picked effect: '+w.eval('Fx').st.name+' tab='+w.eval('tab'));
+ // print limit (mock printer)
+ q('mock').checked=true;const bits=new Uint8Array(384*50);bits.fill(1,0,384*5);
+ const r1=await P.printBits(bits,'t1'),r2=await P.printBits(bits,'t2'),r3=await P.printBits(bits,'t3');L('prints: '+r1+','+r2+','+r3+' (limit 2) toast="'+(d.getElementById('toast')||{}).textContent+'"');
+ L('count text: '+q('kidcount').textContent);
+ // wrong PIN then right PIN, raise limit, exit
+ q('kidparent').click();await sleep(100);d.querySelector('#kpin').value='0000';d.querySelector('#kok').click();await sleep(60);L('wrong pin msg: '+d.querySelector('#kerr').textContent);
+ d.querySelector('#kpin').value='1234';d.querySelector('#kok').click();await sleep(100);L('parent panel open: '+!!d.querySelector('#kexit'));
+ d.querySelector('#klim').value='5';d.querySelector('#ksave').click();d.querySelector('#kreset').click();await sleep(50);L('limit now '+K.cfg.limit+' prints counted '+K.recent().length);
+ const r4=await P.printBits(bits,'t4');L('print after reset: '+r4);
+ d.querySelector('#kexit').click();await sleep(100);L('after exit: on='+K.on+' print tab visible='+(w.getComputedStyle(q('tabpr')).display!=='none'));
+ // persistence
+ L('stored='+localStorage.getItem('catcam-kid'));
+ L('DONE')}catch(e){L('FATAL '+e.message+e.stack)}};
+</script></body>
