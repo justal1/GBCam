@@ -1,0 +1,9 @@
+<!doctype html><body><pre id=o></pre><iframe id=f src="index.html" width=420 height=300></iframe><script>
+const L=t=>document.getElementById('o').textContent+=t+'\n';
+document.getElementById('f').onload=async()=>{try{await new Promise(r=>setTimeout(r,800));const w=document.getElementById('f').contentWindow;
+ const run=async(name,maxLen,failAlways)=>{const sent=[];w.eval('ble').wc={properties:{writeWithoutResponse:true},writeValueWithoutResponse:async p=>{if(failAlways||p.length>maxLen){const e=new Error('GATT operation failed for unknown reason.');e.name='NetworkError';throw e}sent.push(p.length)}};w.eval('ble').dev={gatt:{connected:true}};
+  const pk=[w.eval('pkt')(0xA2,new Uint8Array(48)),w.eval('pkt')(0xA1,[60,0])];const c=w.eval('cfg')();c.chunk=100;c.delay=0;
+  try{await w.eval('bleSend')(pk,c,()=>{});L(name+': ok, writes='+sent.join(',')+' chunkSlider='+w.document.getElementById('chunk').value)}catch(e){L(name+': threw -> '+e.message)}};
+ await run('MTU 20 printer',20,false);await run('big MTU printer',512,false);await run('always failing',0,true);
+ w.eval('ble').dev={gatt:{connected:false}};await run('disconnected',512,false);L('DONE')}catch(e){L('FATAL '+e.message)}};
+</script></body>

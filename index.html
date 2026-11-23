@@ -108,7 +108,7 @@ textarea{resize:vertical}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style></head>
 <body>
-<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v14</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v16</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
 
 <div id="camview">
@@ -239,7 +239,7 @@ textarea{resize:vertical}
   <div class="ctl" style="margin-top:10px">
     <span>Darkness</span><input id="energy" type="range" min="0" max="100" step="1" value="50"><output></output>
     <span>Feed lines</span><input id="feed" type="range" min="0" max="200" step="10" value="60"><output></output>
-    <span>Chunk bytes</span><input id="chunk" type="range" min="20" max="180" step="10" value="100"><output></output>
+    <span>Chunk bytes</span><input id="chunk" type="range" min="20" max="180" step="10" value="20"><output></output>
     <span>Row delay ms</span><input id="delay" type="range" min="0" max="30" step="1" value="4"><output></output>
   </div>
   <label class="chk"><input type="checkbox" id="msb"> MSB-first bits (try this if the print is mirrored in 8-px stripes)</label>
@@ -253,12 +253,12 @@ textarea{resize:vertical}
 <div class="row" id="albbar" style="margin-top:10px"><button id="albsel">Select</button><button id="albfav">★ Favs</button><button id="albbatch">Import photos…</button><button id="install" hidden>Install</button><input id="batchfile" type="file" accept="image/*" multiple hidden></div>
 <div class="row" id="selbar" hidden><span id="selcount" class="sub"></span><button id="selprint" title="Print">🖨</button><button id="selfav" title="Favourite">★</button><button id="selzip">Zip</button><button id="selshare">Share</button><button id="seldel" title="Delete">🗑</button></div>
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
-<details><summary>Log</summary><div id="log"></div></details>
+<details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=14"></script>
-<script src="fx.js?v=14"></script>
-<script src="fx2.js?v=14"></script>
-<script src="goo.js?v=14"></script>
+<script src="gbc.js?v=16"></script>
+<script src="fx.js?v=16"></script>
+<script src="fx2.js?v=16"></script>
+<script src="goo.js?v=16"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -368,9 +368,25 @@ async function bleConnect(){
 }
 async function bleSend(packets,c,onprog){
   const wc=ble.wc;if(!wc)throw new Error('printer not connected');
-  const nowr=wc.properties.writeWithoutResponse;let i=0;
+  const nowr=wc.properties.writeWithoutResponse;let i=0,chunk=Math.max(20,+c.chunk||20);
+  const write=async part=>{
+    for(let attempt=0;;attempt++){
+      if(!ble.dev||!ble.dev.gatt.connected)throw new Error('printer disconnected during print (turn it off and on, then Connect again)');
+      try{nowr?await wc.writeValueWithoutResponse(part):await wc.writeValue(part);return}
+      catch(e){
+        log('write failed',e.name,e.message,'chunk',chunk,'len',part.length);
+        if(attempt===0&&/GATT|Network|Invalid|exceed/i.test(e.name+' '+e.message)){await sleep(30);continue} // one plain retry
+        throw e}
+    }
+  };
   for(const p of packets){
-    for(let o=0;o<p.length;o+=c.chunk){const part=p.slice(o,o+c.chunk);nowr?await wc.writeValueWithoutResponse(part):await wc.writeValue(part)}
+    for(let o=0;o<p.length;o+=chunk){
+      const part=p.slice(o,o+chunk);
+      try{await write(part)}
+      catch(e){
+        if(chunk>20){log('falling back to 20-byte chunks');chunk=20;$('chunk').value=20;$('chunk').dispatchEvent(new Event('input'));o=-chunk;continue} // restart this packet at the safe size
+        throw new Error((e.name||'Error')+': '+e.message)}
+    }
     let t=0;while(ble.paused&&t<3000){await sleep(20);t+=20}
     if(c.delay)await sleep(c.delay);
     onprog&&onprog(++i/packets.length)}
@@ -445,6 +461,7 @@ function backToCam(){live=true;srcCv=work;if($('clipbar'))$('clipbar').hidden=tr
 // ---------- actions ----------
 async function doPrint(){if(!lastBits)return;$('print').disabled=true;await Prt.printBits(lastBits,'photo');$('print').disabled=false}
 $('shutter').onclick=()=>{if(!live){backToCam();return}Shots.shutter()};
+$('copylog').onclick=async()=>{try{await navigator.clipboard.writeText($('log').textContent);toast('Log copied')}catch(e){toast('Could not copy: '+e.message,'bad')}};
 $('prconnect').onclick=()=>$('connect').click();
 $('print').onclick=doPrint;
 $('flip').onclick=()=>{facing=facing==='user'?'environment':'user';startCam()};
@@ -464,12 +481,12 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=14"></script>
-<script src="overlay.js?v=14"></script>
-<script src="shots.js?v=14"></script>
-<script src="album.js?v=14"></script>
-<script src="vendor/qrcode.js?v=14"></script>
-<script src="make.js?v=14"></script>
-<script src="gb.js?v=14"></script>
-<script src="gbui.js?v=14"></script>
+<script src="print.js?v=16"></script>
+<script src="overlay.js?v=16"></script>
+<script src="shots.js?v=16"></script>
+<script src="album.js?v=16"></script>
+<script src="vendor/qrcode.js?v=16"></script>
+<script src="make.js?v=16"></script>
+<script src="gb.js?v=16"></script>
+<script src="gbui.js?v=16"></script>
 </body></html>
