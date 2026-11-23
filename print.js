@@ -82,8 +82,8 @@ const Prt = (() => {
       const job = buildJob(bits, c); log((label || 'print') + ':', job.length, 'packets');
       if (!c.mock && !ble.wc) await bleConnect();
       await (c.mock ? mockSend : bleSend)(job, c, p => bar.style.width = (p * 100) + '%');
-      log((label || 'print') + ' done'); last = { bits, label }; toast('Printed ✓'); if (window.Kid) Kid.printed(); if (navigator.vibrate) navigator.vibrate(25); return true;
-    } catch (e) { log('PRINT ERROR', e.message); last = { bits, label }; toast('Print failed: ' + e.message + ' — see Log at the bottom', 'bad'); return false; }
+      log((label || 'print') + ' done'); last = { bits, label }; toast('Printed ✓'); if (window.Kid) Kid.printed(); if (window.Health) Health.record(bits.length / W + (c.feed || 0), true); if (navigator.vibrate) navigator.vibrate(25); return true;
+    } catch (e) { log('PRINT ERROR', e.message); last = { bits, label }; if (window.Health) Health.record(0, false, e.message); toast('Print failed: ' + e.message + ' — see Log at the bottom', 'bad'); return false; }
     finally { setTimeout(() => { pr.style.display = 'none'; bar.style.width = 0; }, 800); }
   }
   // preview modal: show a canvas, with Print / Save / Close (+ optional extra button)

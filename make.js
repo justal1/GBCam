@@ -411,6 +411,7 @@ const Make = (() => {
 
 
   // ---------------- gift tags (present labels for any occasion) ----------------
+const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }, monthISO = () => todayISO().slice(0, 7);
   const GIFT_OCC = [
     { id: 'christmas', name: 'Christmas', border: 'holly', icon: 'tree', msg: 'Merry Christmas!' },
     { id: 'birthday', name: 'Birthday', border: 'confetti', icon: 'cake', msg: 'Happy Birthday!' },
@@ -557,6 +558,22 @@ const Make = (() => {
     if (land) { const r = cvs(h, w), rx = r.getContext('2d'); rx.fillStyle = '#fff'; rx.fillRect(0, 0, h, w); rx.translate(0, w); rx.rotate(-Math.PI / 2); rx.drawImage(page2, 0, 0); out = r; }
     return { bits: Prt.canvasBits(out), h: out.height, canvas: out };
   }
+
+
+  function invitation(o) {
+    const occ = GIFT_OCC.find(x => x.id === o.iv_occ) || GIFT_OCC[1], SERIF = 'Georgia, "Times New Roman", serif', m = cvs(10, 10).getContext('2d'), rows = [['WHEN', o.iv_when], ['WHERE', o.iv_where], ['RSVP', o.iv_rsvp]].filter(r => r[1] && r[1].trim());
+    m.font = `800 22px ${SERIF}`; const whoL = wrapLines(m, o.iv_who || 'Come and celebrate!', W - 90).slice(0, 4); m.font = `600 20px ${FONT}`; const rowL = rows.map(r => wrapLines(m, r[1], W - 140).slice(0, 3));
+    const h = 220 + whoL.length * 34 + rowL.reduce((n, l) => n + l.length * 26 + 26, 0) + 40, c = cvs(W, h), x = c.getContext('2d'), rand = rng(5);
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, h); x.fillStyle = '#000'; x.strokeStyle = '#000'; giftBorder(x, W, h, occ.border, rand);
+    giftIcon(x, W / 2, 84, 96, occ.icon); x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.font = `900 ${o.iv_title && o.iv_title.length > 14 ? 34 : 42}px ${SERIF}`; x.fillText(o.iv_title || 'You are invited!', W / 2, 168);
+    let y = 214; x.font = `800 22px ${SERIF}`; whoL.forEach(l => { x.fillText(l, W / 2, y); y += 34; }); y += 8;
+    rows.forEach((r, i) => { x.font = `900 15px ${FONT}`; x.textAlign = 'left'; x.fillText(r[0], 44, y); x.font = `600 20px ${FONT}`; rowL[i].forEach((l, k) => x.fillText(l, 116, y + k * 26)); y += rowL[i].length * 26 + 26; });
+    return { bits: Prt.canvasBits(c), h, canvas: c };
+  }
+
+
+  const gather = r => { const o = {}; r.querySelectorAll('[name]').forEach(e => { if (e.type === 'file' || e.tagName === 'BUTTON') return; o[e.name] = e.type === 'checkbox' ? e.checked : e.value; }); return o; };
+  const groupSync = r => { const w = r.querySelector('[name=what]').value; r.querySelectorAll('[data-g]').forEach(g => { g.hidden = !g.dataset.g.split(' ').includes(w); }); };
 
   // ---------------- strip footer (also used by Shots.strip) ----------------
   function stripFooter() {
@@ -784,6 +801,40 @@ const Make = (() => {
         const q = n => r.querySelector('[name=' + n + ']'), sync = () => { const m = q('model').value; q('o_stars').hidden = m !== 'stars'; q('o_pin').hidden = m !== 'pinwheel'; q('o_snake').hidden = m !== 'snake' && m !== 'fan'; q('o_snow').hidden = m !== 'snowflake'; q('o_parts').hidden = !['dart', 'pinwheel', 'snowflake', 'hat'].includes(m); };
         q('model').addEventListener('change', sync); sync(); q('newflake').onclick = () => { st.originSeed = 1 + rnd(9999); r.dispatchEvent(new Event('input', { bubbles: true })); };
       },
+    },
+    party: {
+      title: '🎉 Party printables',
+      html: () => sel('what', 'What to make', [['bingo', '🎱 Bingo cards'], ['scavenger', '🔍 Scavenger hunt card'], ['secret', '🕵️ Secret message + code key'], ['wheel', '🎡 Secret code wheel'], ['raffle', '🎟 Raffle tickets'], ['invite', '💌 Invitation']], 'bingo')
+        + `<div data-g="bingo">${sel('bingo_mode', 'Card type', [['numbers', 'Numbers (classic bingo)'], ['words', 'My own words or pictures']], 'numbers')}${sel('bingo_size', 'Grid', [['5', '5 × 5'], ['4', '4 × 4'], ['3', '3 × 3 (little kids)']], '5')}${field('bingo_count', 'How many different cards (1–8)', 'number', 4, 'min="1" max="8"')}${field('bingo_title', 'Title (own words only)', 'text', 'PARTY BINGO', 'maxlength="16"')}${field('bingo_items', 'Words (one per line, own words only)', 'textarea', 'Cake\nBalloon\nPresent\nCandle\nMusic\nDance\nSinging\nGames\nSweets\nParty hat\nStreamers\nPhoto\nJuice\nCards\nSnack\nGift bag\nBubbles\nCrown\nTreasure\nSurprise\nFlag\nDrum\nSong\nClap\nPizza', 'rows="5"')}${chk('bingo_caller', 'Add a caller sheet (numbers 1–75, 5 × 5 only)', true)}<div class="row"><button name="newcards" type="button">🔀 New cards</button></div></div>`
+        + `<div data-g="scavenger">${field('sc_title', 'Title', 'text', 'SCAVENGER HUNT', 'maxlength="24"')}${field('sc_items', 'Things to find (one per line)', 'textarea', 'Something red\nA smooth stone\nA leaf bigger than your hand\nSomething that starts with B\nA feather\nAn animal footprint', 'rows="6"')}</div>`
+        + `<div data-g="secret">${field('sec_msg', 'Your secret message', 'textarea', 'MEET ME BY THE OLD OAK TREE AT NOON', 'rows="3"')}${sel('sec_cipher', 'Code', [['caesar', 'Shift code (Caesar)'], ['num', 'Numbers (A=1, B=2…)'], ['morse', 'Morse code']], 'caesar')}<div class="ctl"><span>Shift by</span><input name="sec_shift" type="range" min="1" max="25" value="3"><output></output></div></div>`
+        + `<div data-g="wheel"><div class="sub">Two paper discs to cut out and pin together in the middle. Turn the small one and you can write and read shift codes without a key card.</div></div>`
+        + `<div data-g="raffle">${field('rf_event', 'Event name', 'text', 'SCHOOL FAIR', 'maxlength="18"')}${field('rf_count', 'How many tickets (1–12)', 'number', 6, 'min="1" max="12"')}${field('rf_start', 'First number', 'number', 1, 'min="1"')}</div>`
+        + `<div data-g="invite">${sel('iv_occ', 'Occasion (sets the border and picture)', GIFT_OCC.map(o => [o.id, o.name]), 'birthday')}${field('iv_title', 'Heading', 'text', 'You are invited!', 'maxlength="22"')}${field('iv_who', 'Who and what', 'text', 'Maya’s 9th birthday party', 'maxlength="70"')}${field('iv_when', 'When', 'text', 'Saturday 14 June, 2 to 5 pm', 'maxlength="60"')}${field('iv_where', 'Where', 'text', '12 Park Road, Garden Flat', 'maxlength="60"')}${field('iv_rsvp', 'RSVP (optional)', 'text', 'Alan: 07700 900123', 'maxlength="50"')}</div>`,
+      init(r) { const w = r.querySelector('[name=what]'); w.addEventListener('change', () => groupSync(r)); groupSync(r); r.querySelector('[name=newcards]').onclick = () => { st.partySeed = 1 + rnd(99999); r.dispatchEvent(new Event('input', { bubbles: true })); }; },
+      build(r) { const o = gather(r); o.seed = st.partySeed || 1; if (o.what === 'invite') return invitation(o); const c = Printables.build(o.what, o); return { bits: Prt.canvasBits(c), h: c.height, canvas: c }; },
+    },
+    labels: {
+      title: '🏷 Labels & templates',
+      html: () => sel('what', 'What to make', [['pantry', '🥫 Pantry date labels'], ['cable', '🔌 Cable flags'], ['plant', '🌱 Plant labels'], ['recipe', '🍳 Recipe card'], ['ruler', '📏 Ruler (real size)']], 'pantry')
+        + `<div data-g="pantry">${field('pl_name', 'What is it?', 'text', 'Chicken curry', 'maxlength="22"')}${field('pl_date', 'Opened or made on', 'date', todayISO())}${sel('pl_days', 'Good for', [['1', '1 day'], ['2', '2 days'], ['3', '3 days'], ['5', '5 days'], ['7', '1 week'], ['14', '2 weeks'], ['30', '1 month'], ['90', '3 months'], ['180', '6 months']], '3')}${field('pl_copies', 'Copies (1–12)', 'number', 2, 'min="1" max="12"')}</div>`
+        + `<div data-g="cable">${field('cb_text', 'Name of each cable (one per line)', 'textarea', 'TV\nGAMES CONSOLE\nLAPTOP\nPHONE', 'rows="4"')}</div>`
+        + `<div data-g="plant">${field('pt_name', 'Plant name', 'text', 'Basil', 'maxlength="20"')}${sel('pt_water', 'Water', [['0', 'Rarely'], ['1', 'Weekly'], ['2', 'Twice a week'], ['3', 'Every day']], '2')}${sel('pt_sun', 'Light', [['full', 'Full sun'], ['part', 'Part shade'], ['shade', 'Shade']], 'full')}${field('pt_note', 'A note (optional)', 'text', 'Pinch off the flowers', 'maxlength="40"')}${field('pt_copies', 'Copies (1–6)', 'number', 2, 'min="1" max="6"')}</div>`
+        + `<div data-g="recipe">${field('rc_title', 'Recipe name', 'text', 'Pancakes', 'maxlength="26"')}${field('rc_meta', 'Serves / time (optional)', 'text', 'Serves 4 · 20 minutes', 'maxlength="40"')}${field('rc_ing', 'Ingredients (one per line)', 'textarea', '200 g plain flour\n2 eggs\n300 ml milk\nPinch of salt\nButter for the pan', 'rows="5"')}${field('rc_steps', 'Method (one step per line)', 'textarea', 'Whisk the flour, eggs, milk and salt into a smooth batter.\nRest it for 10 minutes.\nFry a ladle of batter in a hot buttered pan, 1 minute each side.', 'rows="5"')}</div>`
+        + `<div data-g="ruler">${sel('rl_unit', 'Marks', [['both', 'Centimetres and inches'], ['cm', 'Centimetres and millimetres'], ['inch', 'Inches and sixteenths']], 'both')}${sel('rl_len', 'Length', [['10', '10 cm'], ['15', '15 cm'], ['20', '20 cm'], ['30', '30 cm'], ['45', '45 cm'], ['60', '60 cm']], '15')}<div class="sub">The paper roll prints about 8 dots to the millimetre, so the marks are true size. Check against a real ruler once.</div></div>`,
+      init(r) { r.querySelector('[name=what]').addEventListener('change', () => groupSync(r)); groupSync(r); },
+      build(r) { const o = gather(r), c = Printables.build(o.what, o); return { bits: Prt.canvasBits(c), h: c.height, canvas: c }; },
+    },
+    planner: {
+      title: '📅 Planners',
+      html: () => sel('what', 'What to make', [['month', '🗓 Monthly calendar'], ['week', '📆 Weekly planner'], ['day', '☑️ Day planner'], ['habits', '✅ Habit tracker'], ['meals', '🍽 Meal planner']], 'month')
+        + `<div data-g="month">${field('mo_month', 'Month', 'month', monthISO())}${sel('mo_start', 'Week starts on', [['mon', 'Monday'], ['sun', 'Sunday']], 'mon')}${chk('mo_notes', 'Add a notes area underneath', true)}</div>`
+        + `<div data-g="week">${field('wk_date', 'Any day in the week', 'date', todayISO())}</div>`
+        + `<div data-g="day">${field('dy_date', 'Day', 'date', todayISO())}</div>`
+        + `<div data-g="habits">${field('hb_month', 'Month', 'month', monthISO())}${field('hb_list', 'Habits (one per line, up to 12)', 'textarea', 'Drink water\nRead 10 minutes\nTidy up\nWalk', 'rows="5"')}<div class="sub">The tracker is drawn sideways and printed down the paper: turn it to read.</div></div>`
+        + `<div data-g="meals">${field('ml_title', 'Title', 'text', 'MEAL PLAN', 'maxlength="18"')}</div>`,
+      init(r) { r.querySelector('[name=what]').addEventListener('change', () => groupSync(r)); groupSync(r); },
+      build(r) { const o = gather(r), c = Printables.build(o.what, o); return { bits: Prt.canvasBits(c), h: c.height, canvas: c }; },
     },
     scroll: {
       title: '📜 Scroll message',

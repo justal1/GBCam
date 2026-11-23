@@ -1,0 +1,15 @@
+<!doctype html><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=420 height=1100 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document,H=w.eval('Health'),P=w.eval('Prt');
+ w.localStorage.removeItem('catcam-health');d.getElementById('tabpr').click();await sleep(300);
+ L('before: '+d.getElementById('hppaper').textContent+' | conn: '+d.getElementById('hpconn').textContent);
+ d.getElementById('mock').checked=true;const bits=new Uint8Array(384*400);bits.fill(1,0,384*10);
+ for(let i=0;i<3;i++)await P.printBits(bits,'t'+i);await sleep(300);
+ L('after 3 mock prints: '+d.getElementById('hppaper').textContent+' | '+d.getElementById('hpstats').textContent);
+ // fake printer answering the status query
+ const ble=w.eval('ble');ble.dev={name:'PD01',gatt:{connected:true}};ble.wc={properties:{writeWithoutResponse:true},writeValueWithoutResponse:async()=>{setTimeout(()=>{ble.lastState=[0x80,0x01,0x54];ble.stateAt=Date.now()},120)}};
+ d.getElementById('hpcheck').click();await sleep(1200);L('check printer: '+d.getElementById('hpstate').textContent+' | conn: '+d.getElementById('hpconn').textContent);
+ // paper warnings: push the gauge past 90%
+ H.data.mm=3700;H.record(8,true);await sleep(200);L('toast: '+(d.getElementById('toast')||{}).textContent+' | '+d.getElementById('hppaper').textContent);
+ d.getElementById('hpnew').onclick=null;L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}};
+</script></body>

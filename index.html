@@ -148,9 +148,12 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 .zxrow button b{font-size:17px;color:#f2f2f2}.zxrow button i{font-style:normal;font-size:8px;letter-spacing:-.2px}.zxrow button .kw{color:#7ddc7d}.zxrow button .sy{color:#ff7b7b}
 .zxrow button.on{background:#3a4a1a;border-color:var(--acc)}.zxrow button:active{filter:brightness(1.5)}
 .zxitem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;padding:8px;background:#1a1d22;border-radius:10px}.zxitem span{flex:1 1 100%;font-weight:600}.zxitem button{padding:7px 10px;font-size:13px}
+/* printer health */
+.hp{background:var(--panel);border-radius:12px;padding:12px;margin:10px 0}.hpline{font-weight:700}
+.hpgauge{height:12px;background:#2f353d;border-radius:6px;overflow:hidden;margin:8px 0 4px}.hpgauge i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s}.hpgauge i.warn{background:#f0b429}.hpgauge i.bad{background:var(--bad)}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v47</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v49</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
@@ -242,7 +245,14 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 </div><!-- /camview -->
 
 <div id="printview" hidden>
-  <div class="sub">Label printer</div>
+  <div id="hpbox" class="hp"><div class="sub" style="margin-top:0">Printer health</div>
+    <div id="hpconn" class="hpline"></div>
+    <div class="hpgauge"><i id="hpbar"></i></div><div id="hppaper" class="sub"></div><div id="hpstats" class="sub"></div>
+    <div class="row"><button id="hpconnect" type="button">Connect printer</button><button id="hpcheck" type="button">Check printer</button></div>
+    <div id="hpstate" class="sub"></div>
+    <div class="row"><select id="hproll"><option value="2">Roll: about 2 m</option><option value="3">Roll: about 3 m</option><option value="4">Roll: about 4 m</option><option value="5">Roll: about 5 m</option><option value="6">Roll: about 6 m</option><option value="8">Roll: about 8 m</option><option value="10">Roll: about 10 m</option></select><button id="hpnew" type="button">🧻 New roll</button></div>
+    <div class="sub">The paper gauge is an estimate from what you have printed (about 8 dots to the millimetre, plus feed). Tap New roll when you change the paper. Check printer asks the printer for its status; battery and paper-sensor details differ between models, so the raw numbers are shown too.</div></div>
+  <div class="sub" style="margin-top:18px">Label printer</div>
   <textarea id="lbltext" rows="3" placeholder="Type something to print…"></textarea>
   <div class="ctl" style="margin-top:8px"><span>Text size</span><input id="lblsize" type="range" min="16" max="96" step="2" value="48"><output></output></div>
   <div class="row"><select id="lblalign"><option value="center">Centre</option><option value="left">Left</option><option value="right">Right</option></select><label class="chk" style="margin:0"><input type="checkbox" id="lblbold" checked> Bold</label><label class="chk" style="margin:0"><input type="checkbox" id="lbldate"> Date</label></div>
@@ -319,10 +329,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=47"></script>
-<script src="fx.js?v=47"></script>
-<script src="fx2.js?v=47"></script>
-<script src="goo.js?v=47"></script>
+<script src="gbc.js?v=49"></script>
+<script src="fx.js?v=49"></script>
+<script src="fx2.js?v=49"></script>
+<script src="goo.js?v=49"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -426,7 +436,7 @@ async function bleConnect(){
   if(!wc)throw new Error('no writable characteristic found; see log');
   if(nc){try{await nc.startNotifications();nc.addEventListener('characteristicvaluechanged',ev=>{
     const d=new Uint8Array(ev.target.value.buffer);log('<',[...d].map(b=>b.toString(16).padStart(2,'0')).join(' '));
-    if(d[2]===0xAE){ble.paused=d[6]===0x10}})}catch(e){log('notify failed',e.message)}}
+    if(d[2]===0xAE){ble.paused=d[6]===0x10}if(d[2]===0xA3){ble.lastState=[...d.slice(6,d.length-2)];ble.stateAt=Date.now();window.dispatchEvent(new Event('printerstate'))}})}catch(e){log('notify failed',e.message)}}
   ble.dev=dev;ble.wc=wc;ble.nc=nc;ble.paused=false;
   setStatus('printer: '+(dev.name||'connected'),true);
 }
@@ -545,24 +555,26 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=47"></script>
-<script src="overlay.js?v=47"></script>
-<script src="shots.js?v=47"></script>
-<script src="album.js?v=47"></script>
-<script src="logo.js?v=47"></script>
-<script src="origami.js?v=47"></script>
-<script src="ansi.js?v=47"></script>
-<script src="ansidraw.js?v=47"></script>
-<script src="vendor/qrcode.js?v=47"></script>
-<script src="make.js?v=47"></script>
-<script src="gb.js?v=47"></script>
-<script src="gbui.js?v=47"></script>
-<script src="spectrum/z80.js?v=47"></script>
-<script src="spectrum/basic.js?v=47"></script>
-<script src="spectrum/spectrum.js?v=47"></script>
-<script src="spectrum/files.js?v=47"></script>
-<script src="spectrum/zxui.js?v=47"></script>
-<script src="kid.js?v=47"></script>
-<script src="swipe.js?v=47"></script>
+<script src="print.js?v=49"></script>
+<script src="overlay.js?v=49"></script>
+<script src="shots.js?v=49"></script>
+<script src="album.js?v=49"></script>
+<script src="printables.js?v=49"></script>
+<script src="logo.js?v=49"></script>
+<script src="origami.js?v=49"></script>
+<script src="ansi.js?v=49"></script>
+<script src="ansidraw.js?v=49"></script>
+<script src="vendor/qrcode.js?v=49"></script>
+<script src="make.js?v=49"></script>
+<script src="gb.js?v=49"></script>
+<script src="gbui.js?v=49"></script>
+<script src="spectrum/z80.js?v=49"></script>
+<script src="spectrum/basic.js?v=49"></script>
+<script src="spectrum/spectrum.js?v=49"></script>
+<script src="spectrum/files.js?v=49"></script>
+<script src="spectrum/zxui.js?v=49"></script>
+<script src="health.js?v=49"></script>
+<script src="kid.js?v=49"></script>
+<script src="swipe.js?v=49"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>
