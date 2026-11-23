@@ -10,3 +10,4 @@ rom/
 *.ans
 *.ANS
 testroms/ans/
+testroms/z80/

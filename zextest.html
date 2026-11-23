@@ -1,0 +1,21 @@
+<!doctype html><body><pre id=o></pre><script src="spectrum/z80.js"></script><script>
+// CP/M harness for the ZEXDOC / ZEXALL Z80 instruction exercisers
+(async()=>{
+ const name=new URLSearchParams(location.search).get('t')||'zexdoc';
+ const L=t=>{fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{});document.getElementById('o').textContent+=t+'\n'};
+ const img=new Uint8Array(await (await fetch('testroms/z80/'+name+'.cim')).arrayBuffer());
+ const mem=new Uint8Array(65536);mem.set(img,0x100);mem[0]=0x76;mem[5]=0xC9;let out='',done=false;
+ const cpu=new Z80({rd:a=>mem[a],wr:(a,v)=>{mem[a]=v},in:()=>0xFF,out:()=>{}});cpu.pc=0x100;cpu.sp=0xFFF0;
+ const flush=()=>{if(out){L(out.replace(/\r/g,''));out=''}};
+ let n=0,last=performance.now(),insn=0;
+ function run(){const end=performance.now()+40;
+  while(performance.now()<end&&!done){for(let i=0;i<5000;i++){
+    if(cpu.pc===5){const c=cpu.R[1];if(c===2)out+=String.fromCharCode(cpu.R[3]);else if(c===9){let a=cpu.de;while(mem[a]!==0x24){out+=String.fromCharCode(mem[a]);a++}}cpu.pc=cpu.pop();continue}
+    if(cpu.pc===0){done=true;break}
+    cpu.step();insn++}
+   if(out.includes('\n')){const k=out.lastIndexOf('\n');L(out.slice(0,k).replace(/\r/g,''));out=out.slice(k+1)}}
+  if(performance.now()-last>15000){last=performance.now();L('... '+(insn/1e6|0)+'M instructions')}
+  if(done){flush();L('DONE '+(insn/1e6|0)+'M instructions')}else setTimeout(run,0)}
+ run();
+})();
+</script></body>

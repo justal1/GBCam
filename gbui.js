@@ -15,18 +15,19 @@
 
   // ---- tabs ----
   function setTab(t) {
-    tab = t; const gm = t === 'gb', hideCam = gm || t === 'pr' || t === 'mk';
-    camv.forEach(e => e.hidden = hideCam); $('camdock').hidden = hideCam; gbv.hidden = !gm; $('printview').hidden = t !== 'pr'; $('makeview').hidden = t !== 'mk';
+    tab = t; const gm = t === 'gb', hideCam = gm || t === 'pr' || t === 'mk' || t === 'zx';
+    camv.forEach(e => e.hidden = hideCam); $('camdock').hidden = hideCam; gbv.hidden = !gm; $('printview').hidden = t !== 'pr'; $('makeview').hidden = t !== 'mk'; $('zxview').hidden = t !== 'zx';
     $('camsettings').hidden = t === 'fx'; $('fxpanel').hidden = t !== 'fx';
-    for (const k of ['cam', 'fx', 'pr', 'mk', 'gb']) $('tab' + k).className = t === k ? 'pri' : '';
+    for (const k of ['cam', 'fx', 'pr', 'mk', 'gb', 'zx']) $('tab' + k).className = t === k ? 'pri' : '';
     $('view').style.touchAction = t === 'fx' ? 'none' : 'pan-y';
     if (window.Fx) Fx.badge();
     if (t === 'mk') Make.open();
+    if (t === 'zx' && window.ZX) ZX.onShow();
     if (gm && !started) { started = true; boot(); }
     if (gm) ensureAudio(); else { saveSram(); if (ac && ac.state === 'running') ac.suspend(); }
     try { localStorage.setItem('catcam-tab', t); } catch (e) { }
   }
-  $('tabcam').onclick = () => setTab('cam'); $('tabfx').onclick = () => setTab('fx'); $('tabpr').onclick = () => setTab('pr'); $('tabmk').onclick = () => setTab('mk'); $('tabgb').onclick = () => setTab('gb');
+  $('tabcam').onclick = () => setTab('cam'); $('tabfx').onclick = () => setTab('fx'); $('tabpr').onclick = () => setTab('pr'); $('tabmk').onclick = () => setTab('mk'); $('tabgb').onclick = () => setTab('gb'); $('tabzx').onclick = () => setTab('zx');
 
   // ---- audio ----
   let ac = null, muted = false;
@@ -214,5 +215,5 @@
   $('gbpng').onclick = () => { const a = document.createElement('a'); a.href = $('gbpage').toDataURL('image/png'); a.download = 'gb-print-' + Date.now() + '.png'; a.click(); };
 
   window.gbui = { tick(n) { for (let i = 0; i < n; i++) { if (i % 4 === 0) updateSensor(); gb.runFrame(); } drawFrame(); }, get gb() { return gb; }, get place() { return place; }, start, startBytes, setTab, pageToBits, sensorImg, sensorRGB, onPage, drawFrame };
-  try { const lt = localStorage.getItem('catcam-tab'); if (lt === 'gb' || lt === 'fx' || lt === 'pr' || lt === 'mk') setTab(lt); } catch (e) { }
+  try { const lt = localStorage.getItem('catcam-tab'); if (lt === 'gb' || lt === 'fx' || lt === 'pr' || lt === 'mk' || lt === 'zx') setTab(lt); } catch (e) { }
 })();

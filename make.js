@@ -694,10 +694,18 @@ const Make = (() => {
       html: () => field('name', 'Name', 'text', 'ALEX', 'maxlength="16"') + sel('orient', 'Direction', [['side', 'Sideways, turned right 90°: huge and long'], ['sideL', 'Sideways, turned left 90°: huge and long'], ['up', 'Upright: small']], 'side') + sel('style', 'Style', [['band', 'Black band'], ['frame', 'Plain frame'], ['star', 'Stars']], 'band') + field('sub', 'Extra line (optional)', 'text', '', 'maxlength="30" placeholder="e.g. Chief snack officer"'),
       build(r, v) { return v('orient').value === 'up' ? badge(v('name').value || ' ', v('style').value, v('sub').value) : badgeSide(v('name').value || ' ', v('style').value, v('sub').value, v('orient').value === 'sideL'); },
     },
+    ansidraw: {
+      noPreview: true,
+      title: '🎨 ANSI draw',
+      html: () => '<div name="ad"></div>',
+      init(r) { AnsiDraw.mount(r.querySelector('[name=ad]'), {}); },
+      async build() { return AnsiDraw.toBits(); },
+      onShow() { },
+    },
     ansi: {
       title: '💾 ANSI / BBS art',
       html: () => sel('art', 'Art', [['bbs', 'GB CatCam BBS screen'], ['cat', 'Cat'], ['plasma', 'Plasma'], ['copper', 'Copper bars'], ['nfo', 'Release NFO (text file with block art)'], ['file', 'My own .ANS / .NFO file']], 'bbs')
-        + `<div class="row"><button name="open" type="button">📂 Open an .ANS or .NFO file…</button><input name="file" type="file" hidden></div><div class="sub" name="fname"></div>`
+        + `<div class="row"><button name="open" type="button">📂 Open an .ANS or .NFO file…</button><button name="edit" type="button">✏️ Edit in ANSI draw</button><input name="file" type="file" hidden></div><div class="sub" name="fname"></div>`
         + sel('dir', 'Print as', [['side', 'Sideways, real size (turn the paper to read)'], ['up', 'Upright, shrunk to fit the paper']], 'side') + sel('look', 'Colours', [['screen', 'Screen look (like the monitor, black background)'], ['paper', 'Light paper (negative, uses much less ink)']], 'screen')
         + `<div class="sub">Sideways prints an 80×24 screen at exactly 1:1 pixels; taller art comes out as several strips to tape together. Find more art at <a href="https://16colo.rs" target="_blank" rel="noopener" style="color:var(--acc)">16colo.rs ↗</a>, download an .ANS file and open it here. Art on that site belongs to its artists, so keep it to personal printing and credit them.</div>`,
       async build(r, v) {
@@ -708,6 +716,7 @@ const Make = (() => {
       init(r) {
         const f = r.querySelector('[name=file]'), note = r.querySelector('[name=fname]');
         r.querySelector('[name=open]').onclick = () => f.click();
+        r.querySelector('[name=edit]').onclick = async () => { await Ansi.ready(); const kind = r.querySelector('[name=art]').value; const doc = kind === 'file' ? ansiDoc : Ansi.ART[kind](); if (!doc) { toast('Open a file first', 'bad'); return; } AnsiDraw.load(Object.assign(Ansi.blank(doc.cols, doc.rows), { ch: doc.ch.slice(), at: doc.at.slice(), sauce: doc.sauce })); Make.show('ansidraw'); toast('Opened in ANSI draw'); };
         const setFor = (kind) => { const text = kind === 'nfo' || kind === 'text'; r.querySelector('[name=dir]').value = text ? 'up' : 'side'; r.querySelector('[name=look]').value = text ? 'paper' : 'screen'; }; // text files: one upright print, dark on white; art: real-size sideways
         r.querySelector('[name=art]').addEventListener('change', e => { setFor(e.target.value === 'file' ? (ansiKind || 'art') : e.target.value); });
         f.onchange = async () => { const file = f.files[0]; if (!file) return; try { ansiKind = /\.(nfo|txt|diz|asc|me|1st)$/i.test(file.name) ? 'text' : 'art'; setFor(ansiKind); ansiDoc = Ansi.parse(new Uint8Array(await file.arrayBuffer())); note.textContent = `${file.name}: ${ansiDoc.cols}×${ansiDoc.rows}` + (ansiDoc.sauce && ansiDoc.sauce.author ? ` by ${ansiDoc.sauce.author}` : ''); r.querySelector('[name=art]').value = 'file'; r.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { toast('Could not read that file', 'bad'); } f.value = ''; };
@@ -785,6 +794,7 @@ const Make = (() => {
       },
     },
     draw: {
+      noPreview: true,
       title: '✏ Drawing pad',
       html: () => `<canvas name="pad" width="${W}" height="${H}" style="width:100%;max-width:384px;display:block;margin:6px auto;background:#fff;border:2px solid #555;border-radius:4px;touch-action:none"></canvas>`
         + `<div class="ctl"><span>Pen size</span><input name="psize" type="range" min="2" max="40" step="1" value="6"><output></output></div>`
@@ -835,7 +845,7 @@ const Make = (() => {
     const k = st.kind, d = panels[k], v = n => d.querySelector('[name=' + n + ']'); return KINDS[k].build(d, v, { live: !!live });
   }
   async function refresh() {
-    const k = st.kind; if (k === 'draw') { prev.hidden = true; $('mkmeta').textContent = ''; setBar(null); return; }
+    const k = st.kind; if (KINDS[k].noPreview) { prev.hidden = true; $('mkmeta').textContent = ''; setBar(null); return; }
     prev.hidden = false; const tok = ++st.tok;
     try {
       const s = await current(true); if (tok !== st.tok) return;
@@ -846,18 +856,18 @@ const Make = (() => {
   }
   function setBar(s) {
     const k = st.kind; $('mknew').hidden = !RANDOM.includes(k); $('mkext').hidden = !(s && s.extra);
-    const draw = k === 'draw'; $('mkprint').disabled = !draw && !s; $('mksave').disabled = !draw && !s; $('mkshare').disabled = !draw && !s;
+    const draw = !!KINDS[k].noPreview; $('mkprint').disabled = !draw && !s; $('mksave').disabled = !draw && !s; $('mkshare').disabled = !draw && !s;
     $('mkmeta').textContent = s ? `${s.h} dots long ≈ ${(s.h / 8 / 10).toFixed(1)} cm of paper${st.copies > 1 ? ' × ' + st.copies : ''}` : '';
     $('mklast').disabled = !Prt.last;
   }
   const later = () => { clearTimeout(st.timer); st.timer = setTimeout(refresh, 260); };
 
   async function bitsFor(withCopies) {
-    const s = st.kind === 'draw' ? await current() : st.res; if (!s) throw new Error('Nothing to print yet.');
+    const s = KINDS[st.kind].noPreview ? await current() : st.res; if (!s) throw new Error('Nothing to print yet.');
     if (!withCopies || st.copies < 2) return s.bits;
     const parts = []; for (let i = 0; i < st.copies; i++) { if (i) parts.push(gapRow()); parts.push(s); } return Prt.stack(parts).bits;
   }
-  const canvasOf = async () => { const s = st.kind === 'draw' ? await current() : st.res; return Prt.bitsCanvas(s.bits); };
+  const canvasOf = async () => { const s = KINDS[st.kind].noPreview ? await current() : st.res; return Prt.bitsCanvas(s.bits); };
 
   function build() {
     root.innerHTML = '';
@@ -867,7 +877,7 @@ const Make = (() => {
       const d = document.createElement('div'); d.className = 'mkcard'; d.dataset.kind = k; d.hidden = true; d.innerHTML = p.html(); stage.appendChild(d); panels[k] = d;
       restore(k, d);
       d.querySelectorAll('input[type=range]').forEach(r => { const o = r.nextElementSibling; if (o && o.tagName === 'OUTPUT') { const f = () => o.textContent = r.value; r.addEventListener('input', f); f(); } });
-      d.addEventListener('input', () => { persist(k, d); if (k !== 'draw') later(); }); d.addEventListener('change', () => { persist(k, d); if (k !== 'draw') later(); });
+      d.addEventListener('input', () => { persist(k, d); if (!p.noPreview) later(); }); d.addEventListener('change', () => { persist(k, d); if (!p.noPreview) later(); });
       if (p.init) p.init(d);
     }
     $('mkminus').onclick = () => { st.copies = Math.max(1, st.copies - 1); $('mkn').textContent = st.copies; setBar(st.res); };

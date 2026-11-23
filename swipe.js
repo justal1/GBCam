@@ -2,8 +2,8 @@
 // Swipe left / right on the page to move between the top tabs (Cam, Fun, Print, Make, GB).
 // Ignored on things that already use horizontal drags: the camera picture, sliders, the chip rows, canvases, the Game Boy pad.
 const Swipe = (() => {
-  const IDS = ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb'];
-  const BLOCK = 'input, select, textarea, canvas, #camdock, #mkchips, .ctl, #gbpad, #gbstage, #modal, #kiddlg, #goo-tools, #stk, #fxgrid .fxh, [data-noswipe]';
+  const IDS = ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb', 'tabzx'];
+  const BLOCK = 'input, select, textarea, canvas, #camdock, #mkchips, .ctl, #gbpad, #gbstage, #modal, #kiddlg, #goo-tools, #stk, #zxkeys, #fxgrid .fxh, [data-noswipe]';
   let t0 = null;
   const visible = () => IDS.map(id => document.getElementById(id)).filter(b => b && getComputedStyle(b).display !== 'none');
   function go(dir) {

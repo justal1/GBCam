@@ -1,0 +1,35 @@
+<!doctype html><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=430 height=1500 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n'};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document,M=w.eval('Make'),AD=w.eval('AnsiDraw'),A=w.eval('Ansi');
+ d.getElementById('tabmk').click();M.show('ansidraw');await sleep(1500);const root=M.panels.ansidraw,q=n=>root.querySelector('[name='+n+']'),cv=q('cv');
+ L('canvas '+cv.width+'x'+cv.height+' doc '+AD.doc.cols+'x'+AD.doc.rows+' preview hidden='+d.getElementById('mkprev').hidden);
+ const tool=t=>root.querySelector('[data-tool='+t+']').click(),swatch=(row,i)=>q(row).children[i].click();
+ const R=cv.getBoundingClientRect(),cell=(c,r)=>({x:R.left+(c+0.5)/AD.doc.cols*R.width,y:R.top+(r+0.5)/AD.doc.rows*R.height});
+ const ev=(t,c,r)=>{const p=cell(c,r);cv.dispatchEvent(new w.PointerEvent(t,{clientX:p.x,clientY:p.y,pointerId:1,isPrimary:true,buttons:t==='pointerup'?0:1,bubbles:true}))};
+ const stroke=(a,b)=>{ev('pointerdown',a[0],a[1]);ev('pointermove',b[0],b[1]);ev('pointerup',b[0],b[1])};
+ const at=(c,r)=>{const i=r*AD.doc.cols+c;return [AD.doc.ch[i],AD.doc.at[i]&15,AD.doc.at[i]>>4]};
+ // brush: full block in bright red on blue
+ swatch('fgs',12);swatch('bgs',1);root.querySelector('[data-c="219"]').click();tool('brush');stroke([2,2],[10,2]);L('brush cell(5,2)='+JSON.stringify(at(5,2))+' (219,12,1)');
+ // shade char + yellow
+ swatch('fgs',14);root.querySelector('[data-c="177"]').click();stroke([2,3],[10,3]);L('shade cell(6,3)='+JSON.stringify(at(6,3)));
+ // pixel mode (half blocks)
+ swatch('fgs',10);tool('pixel');cv.dispatchEvent(new w.Event('x'));{const p1=cell(20,5),p2=cell(20,5);ev('pointerdown',20,5);ev('pointerup',20,5)};L('pixel cell(20,5)='+JSON.stringify(at(20,5)));
+ // line, box, fill
+ swatch('fgs',11);swatch('bgs',0);root.querySelector('[data-c="205"]').click();tool('line');stroke([2,8],[30,8]);L('line cell(15,8)='+JSON.stringify(at(15,8)));
+ swatch('fgs',13);root.querySelector('[data-c="178"]').click();tool('box');stroke([5,10],[15,14]);L('box edge(5,12)='+JSON.stringify(at(5,12))+' inside(8,12)='+JSON.stringify(at(8,12))+' (outline only)');
+ q('filled').click();stroke([20,10],[28,14]);L('filled box inside(24,12)='+JSON.stringify(at(24,12)));
+ swatch('fgs',15);swatch('bgs',4);root.querySelector('[data-c="176"]').click();tool('fill');ev('pointerdown',8,12);ev('pointerup',8,12);L('fill hole(8,12)='+JSON.stringify(at(8,12)));
+ // mirror
+ q('mirror').click();swatch('fgs',9);root.querySelector('[data-c="219"]').click();tool('brush');ev('pointerdown',3,20);ev('pointerup',3,20);L('mirror: (3,20)='+at(3,20)[0]+' (76,20)='+at(76,20)[0]+' (219,219)');q('mirror').click();
+ // text tool via the hidden input
+ swatch('fgs',15);swatch('bgs',0);tool('text');ev('pointerdown',10,22);ev('pointerup',10,22);const t=q('txt');t.value='HELLO';t.dispatchEvent(new w.Event('input'));L('text: '+[0,1,2,3,4].map(i=>String.fromCharCode(at(10+i,22)[0])).join(''));
+ // undo / redo
+ const before=at(10,22)[0];AD.undo();L('undo typed text -> cell(10,22) char '+at(10,22)[0]+' (was '+before+')');AD.redo();L('redo -> '+at(10,22)[0]);
+ // save -> parse roundtrip
+ q('title').value='Test Art';q('title').dispatchEvent(new w.Event('input'));q('author').value='Alan';q('author').dispatchEvent(new w.Event('input'));
+ const bytes=AD.toAns(AD.doc,{title:'Test Art',author:'Alan',group:''}),back=A.parse(bytes);let same=back.cols===AD.doc.cols&&back.rows>=AD.doc.rows-10,diff=0;for(let i=0;i<Math.min(back.ch.length,AD.doc.ch.length);i++){const a1=AD.doc.at[i],b1=back.at[i];if(AD.doc.ch[i]!==back.ch[i]&&!(AD.doc.ch[i]===32&&back.ch[i]===32))diff++;else if(AD.doc.ch[i]!==32&&a1!==b1)diff++;}
+ L('saved '+bytes.length+' bytes; reopened '+back.cols+'x'+back.rows+'; sauce='+JSON.stringify(back.sauce&&{t:back.sauce.title,a:back.sauce.author,w:back.sauce.width})+'; differing cells='+diff);
+ // print path
+ await sleep(300);const r=await M.KINDS.ansidraw.build();L('print bits: '+r.h+' dots = '+(r.h/80).toFixed(1)+' cm, ink='+r.bits.reduce((a,b)=>a+b,0));
+ q('grid').click();await sleep(100);d.getElementById('mkpaper').scrollIntoView();root.scrollIntoView();L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}};
+</script></body>

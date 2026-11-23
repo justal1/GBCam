@@ -1,0 +1,3 @@
+48.rom is the Sinclair ZX Spectrum 48K ROM. Copyright Amstrad plc; Amstrad has given permission for it to be redistributed
+with emulators (the same permission used by FUSE, JSSpeccy and others). The Z80 core (z80.js) was written for this project and
+checked with the ZEXDOC instruction exerciser (all 67 tests pass).

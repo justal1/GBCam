@@ -82,6 +82,12 @@ textarea{resize:vertical}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 #toast.bad{background:#4a1f23;border-color:#7a2a30}
 /* Make tab */
+.adtools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.adtools button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px}.adtools button span{font-size:20px;line-height:1}.adtools button small{font-size:10.5px}
+.adopts{display:flex;flex-wrap:wrap;gap:2px 14px;margin:2px 0}.adopts .chk{margin:3px 0;font-size:13px}
+.adsw{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin:4px 0}.adsw i{aspect-ratio:1/1.2;border:2px solid #444;border-radius:4px;cursor:pointer}.adsw i.on{border-color:#fff;box-shadow:0 0 0 2px var(--acc)}
+.adchars{display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;max-height:112px;overflow:auto}.adchars button{padding:2px 3px;min-height:0!important;border-radius:6px}.adchars button.on{border-color:var(--acc);background:#232a16}
+.advp{overflow:auto;max-height:52vh;background:#000;border:2px solid #444;border-radius:8px;margin:8px 0}.advp canvas{display:block;image-rendering:pixelated;touch-action:none}
 .srgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
 .srgrid img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:3px solid transparent;background:#2a2e35;cursor:pointer}
 .srgrid img.on{border-color:var(--acc)}
@@ -131,10 +137,21 @@ body.kid button,body.kid select{min-height:46px}
 #camdock #shutterrow{margin:8px 0 4px}
 #camdock #shutter{flex:0 0 64px;height:64px;border-width:5px;outline-width:2px}
 body.kid #camdock #shutter{flex:0 0 72px;height:72px}
+/* ---- ZX Spectrum tab ---- */
+#zxstage{position:relative;background:#000;border-radius:12px;overflow:hidden;border:2px solid #2f353d}
+#zxscreen{display:block;width:100%;aspect-ratio:320/256;image-rendering:pixelated}
+#zxhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim)}#zxhint:empty{display:none}
+#zxprint{background:var(--panel);border-radius:10px;padding:10px;margin:10px 0}#zxpage{display:block;width:100%;max-width:384px;margin:0 auto;image-rendering:pixelated;border-radius:4px}
+#zxkeys{margin:10px 0;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.zxrow{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-bottom:4px}
+.zxrow button{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 0;min-height:50px;line-height:1.05;border-radius:8px;background:#2a2e35;touch-action:manipulation}
+.zxrow button b{font-size:17px;color:#f2f2f2}.zxrow button i{font-style:normal;font-size:8px;letter-spacing:-.2px}.zxrow button .kw{color:#7ddc7d}.zxrow button .sy{color:#ff7b7b}
+.zxrow button.on{background:#3a4a1a;border-color:var(--acc)}.zxrow button:active{filter:brightness(1.5)}
+.zxitem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;padding:8px;background:#1a1d22;border-radius:10px}.zxitem span{flex:1 1 100%;font-weight:600}.zxitem button{padding:7px 10px;font-size:13px}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v37</small></h1><span id="status">printer: not connected</span></header>
-<nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v40</small></h1><span id="status">printer: not connected</span></header>
+<nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
 <div id="stage"><canvas id="view" width="384" height="336"></canvas><div id="hint">Starting camera…</div><div id="count" hidden></div></div>
@@ -235,6 +252,25 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
   <div class="row"><button id="prconnect">Connect printer</button></div>
   <div class="sub">Photo queue: in the Cam tab, open Photos → Select, tick photos and tap 🖨.</div>
 </div>
+<div id="zxview" hidden>
+  <div id="zxstage"><canvas id="zxscreen" width="320" height="256"></canvas><div id="zxhint">Starting the Spectrum…</div></div>
+  <div class="row"><button id="zxpause" type="button">⏸ Pause</button><button id="zxreset" type="button">⟲ Reset</button><button id="zxturbo" type="button">⏩ ×1</button><button id="zxsound" type="button">🔇 Off</button></div>
+  <div class="row"><button id="zxcopy" type="button" class="pri">🖨 Print screen (COPY)</button><label class="chk" style="margin:0"><input type="checkbox" id="zxauto"> Print automatically</label></div>
+  <div id="zxprint" hidden><canvas id="zxpage"></canvas><div class="row"><select id="zxsize"><option value="1.5">1.5× size</option><option value="1">1× size</option></select><button id="zxsend" type="button" class="pri">Send to cat printer</button><button id="zxdismiss" type="button">Dismiss</button></div></div>
+  <div class="row"><button id="zxload" type="button">LOAD ""</button><button id="zxrun" type="button">RUN</button><button id="zxlist" type="button">LIST</button></div>
+  <div id="zxkeys"></div>
+  <div class="sub">Tap the keys like a 48K Spectrum: ⇧ is CAPS SHIFT and sym is SYMBOL SHIFT (tap one, then the key). Green words are what a key types in command mode; red is the symbol shift legend. Typing COPY (key Z) prints the screen, LPRINT and LLIST print text, just like on a ZX Printer.</div>
+  <details open><summary>Programs and tapes</summary>
+    <div id="zxlib" style="margin-top:8px"></div><div class="sub" id="zxtape"></div>
+    <div class="row"><button id="zxrewind" type="button">⏮ Rewind</button><button id="zxeject" type="button">⏏ Eject</button><button id="zxopen" type="button">Open a .TAP file…</button><input type="file" id="zxfile" hidden></div>
+    <div class="sub">SAVE "name" (key S) records the program into this list automatically. Press a key when the Spectrum says “Start tape, then press any key”.</div>
+  </details>
+  <details><summary>Type in a BASIC listing</summary>
+    <textarea id="zxbas" rows="8" placeholder='10 PRINT "HELLO"&#10;20 GO TO 10' style="margin-top:8px;font-family:ui-monospace,monospace"></textarea>
+    <div class="row"><input id="zxname" type="text" placeholder="Name" maxlength="10"><button id="zxmake" type="button">Make a tape</button></div>
+    <div class="sub">Paste a listing from a magazine or book: each line starts with its number. Keywords in capitals (PRINT, GO TO, FOR…), variables in lower case or single capitals.</div>
+  </details>
+</div>
 <div id="makeview" hidden></div>
 <div id="modal" hidden><div id="modalcard"><div id="modalbody"></div></div></div>
 
@@ -283,10 +319,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=37"></script>
-<script src="fx.js?v=37"></script>
-<script src="fx2.js?v=37"></script>
-<script src="goo.js?v=37"></script>
+<script src="gbc.js?v=40"></script>
+<script src="fx.js?v=40"></script>
+<script src="fx2.js?v=40"></script>
+<script src="goo.js?v=40"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -460,7 +496,7 @@ function draw(res,c,ctx){
 }
 let lastT=0;
 let tab='cam';
-function frame(t){requestAnimationFrame(frame);if(tab==='gb'||tab==='pr'||tab==='mk')return;
+function frame(t){requestAnimationFrame(frame);if(tab==='gb'||tab==='pr'||tab==='mk'||tab==='zx')return;
   if(t-lastT<70)return;lastT=t;
   if(live){const g=grabVideo();if(!g)return;render(g)}
 }
@@ -509,16 +545,21 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=37"></script>
-<script src="overlay.js?v=37"></script>
-<script src="shots.js?v=37"></script>
-<script src="album.js?v=37"></script>
-<script src="ansi.js?v=37"></script>
-<script src="vendor/qrcode.js?v=37"></script>
-<script src="make.js?v=37"></script>
-<script src="gb.js?v=37"></script>
-<script src="gbui.js?v=37"></script>
-<script src="kid.js?v=37"></script>
-<script src="swipe.js?v=37"></script>
+<script src="print.js?v=40"></script>
+<script src="overlay.js?v=40"></script>
+<script src="shots.js?v=40"></script>
+<script src="album.js?v=40"></script>
+<script src="ansi.js?v=40"></script>
+<script src="ansidraw.js?v=40"></script>
+<script src="vendor/qrcode.js?v=40"></script>
+<script src="make.js?v=40"></script>
+<script src="gb.js?v=40"></script>
+<script src="gbui.js?v=40"></script>
+<script src="spectrum/z80.js?v=40"></script>
+<script src="spectrum/basic.js?v=40"></script>
+<script src="spectrum/spectrum.js?v=40"></script>
+<script src="spectrum/zxui.js?v=40"></script>
+<script src="kid.js?v=40"></script>
+<script src="swipe.js?v=40"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

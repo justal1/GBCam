@@ -121,7 +121,7 @@
   panel.querySelector('#goo-undo').onclick = () => { const u = G.undo.pop(); if (u) { restoreSnap(u); rerender(); } };
   // dragging must work from the Cam tab too (Surprise me can land on goo there), so the picture must not scroll the page
   const syncTouch = () => { if (typeof tab === 'undefined') return; view.style.touchAction = (tab === 'fx' || (tab === 'cam' && st.name === 'goo')) ? 'none' : 'pan-y'; };
-  ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb'].forEach(id => document.getElementById(id).addEventListener('click', () => setTimeout(syncTouch, 0)));
+  ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb', 'tabzx'].forEach(id => document.getElementById(id).addEventListener('click', () => setTimeout(syncTouch, 0)));
   Fx.onSelect(k => { panel.hidden = k !== 'goo'; syncTouch(); });
   syncTouch();
   Fx.rebuild();

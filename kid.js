@@ -67,7 +67,7 @@ const Kid = (() => {
   $$('kidparent').onclick = parent;
   // the Surprise button is for everyone; only show it where the camera is
   const syncBar = () => { bar.hidden = !(typeof tab !== 'undefined' && (tab === 'cam' || tab === 'fx')); };
-  ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb'].forEach(id => $$(id).addEventListener('click', () => setTimeout(syncBar, 0))); setTimeout(syncBar, 0);
+  ['tabcam', 'tabfx', 'tabpr', 'tabmk', 'tabgb', 'tabzx'].forEach(id => $$(id).addEventListener('click', () => setTimeout(syncBar, 0))); setTimeout(syncBar, 0);
 
   // ---- the parent-side switch lives in Printer settings ----
   const ps = parentBits[0]; if (ps) { const row = document.createElement('div'); row.className = 'row'; row.innerHTML = '<button id="kidon" type="button">🧒 Turn on Kid mode…</button>'; ps.appendChild(row); row.querySelector('button').onclick = setup; }

@@ -1,0 +1,12 @@
+<!doctype html><body style="margin:0;background:#222"><pre id=o style="color:#0f0;font:12px monospace;margin:0"></pre><iframe id=f src="index.html" width=420 height=2300 style="border:0"></iframe><script>
+const L=t=>{document.getElementById('o').textContent+=t+'\n';fetch('http://127.0.0.1:8802/log?'+encodeURIComponent(t)).catch(()=>{})};const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('f').onload=async()=>{try{await sleep(900);const w=document.getElementById('f').contentWindow,d=w.document;
+ d.getElementById('tabzx').click();await sleep(2500);const ZX=w.eval('ZX');L('zx tab visible='+!d.getElementById('zxview').hidden+' camdock hidden='+d.getElementById('camdock').hidden+' hint="'+d.getElementById('zxhint').textContent+'" keys='+d.querySelectorAll('#zxkeys button').length+' lib items='+d.querySelectorAll('.zxitem').length);
+ // load & run the built-in flag through the UI button
+ [...d.querySelectorAll('.zxitem button')].find(b=>/Load & run/.test(b.textContent)).click();
+ for(let i=0;i<60;i++){await sleep(500);const sp=ZX.spec;if(sp&&sp.mem[0x5C3B]!==undefined&&sp.tape.pos>=2&&sp.frames>0)break}
+ await sleep(6000);L('tape: '+d.getElementById('zxtape').textContent);
+ d.getElementById('zxturbo').click();d.getElementById('zxturbo').click();await sleep(14000);
+ d.getElementById('zxcopy').click();await sleep(400);L('print preview shown='+!d.getElementById('zxprint').hidden+' page '+d.getElementById('zxpage').width+'x'+d.getElementById('zxpage').height);
+ L('DONE')}catch(e){L('FATAL '+e.message+'\n'+e.stack)}};
+</script></body>
