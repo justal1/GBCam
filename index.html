@@ -150,7 +150,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 .zxitem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;padding:8px;background:#1a1d22;border-radius:10px}.zxitem span{flex:1 1 100%;font-weight:600}.zxitem button{padding:7px 10px;font-size:13px}
 </style></head>
 <body>
-<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v41</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 GB CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v42</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button><button id="tabzx"><span style="font-size:18px">🕹️</span>ZX</button></nav>
 
 <div id="camdock">
@@ -262,7 +262,7 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
   <div class="sub">Tap the keys like a 48K Spectrum: ⇧ is CAPS SHIFT and sym is SYMBOL SHIFT (tap one, then the key). Green words are what a key types in command mode; red is the symbol shift legend. Typing COPY (key Z) prints the screen, LPRINT and LLIST print text, just like on a ZX Printer.</div>
   <details open><summary>Programs and tapes</summary>
     <div id="zxlib" style="margin-top:8px"></div><div class="sub" id="zxtape"></div>
-    <div class="row"><button id="zxrewind" type="button">⏮ Rewind</button><button id="zxeject" type="button">⏏ Eject</button><button id="zxopen" type="button">Open a .TAP file…</button><input type="file" id="zxfile" hidden></div>
+    <div class="row"><button id="zxrewind" type="button">⏮ Rewind</button><button id="zxeject" type="button">⏏ Eject</button><button id="zxopen" type="button">Open a file…</button><button id="zxsnap" type="button">📸 Snapshot</button><input type="file" id="zxfile" accept=".tap,.tzx,.z80,.sna,.rom,.bin,.zip" hidden></div><div class="sub" id="zxromname"></div><div class="row"><button id="zxorig" type="button">Use the original ROM</button></div><div class="sub">Open accepts .TAP and .TZX tapes, .Z80 and .SNA snapshots, and a different 16K ROM (.rom or .bin), also inside a .ZIP. A ROM you load is remembered on this phone.</div>
     <div class="sub">SAVE "name" (key S) records the program into this list automatically. Press a key when the Spectrum says “Start tape, then press any key”.</div>
   </details>
   <details><summary>Type in a BASIC listing</summary>
@@ -319,10 +319,10 @@ body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=41"></script>
-<script src="fx.js?v=41"></script>
-<script src="fx2.js?v=41"></script>
-<script src="goo.js?v=41"></script>
+<script src="gbc.js?v=42"></script>
+<script src="fx.js?v=42"></script>
+<script src="fx2.js?v=42"></script>
+<script src="goo.js?v=42"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -545,21 +545,22 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=41"></script>
-<script src="overlay.js?v=41"></script>
-<script src="shots.js?v=41"></script>
-<script src="album.js?v=41"></script>
-<script src="ansi.js?v=41"></script>
-<script src="ansidraw.js?v=41"></script>
-<script src="vendor/qrcode.js?v=41"></script>
-<script src="make.js?v=41"></script>
-<script src="gb.js?v=41"></script>
-<script src="gbui.js?v=41"></script>
-<script src="spectrum/z80.js?v=41"></script>
-<script src="spectrum/basic.js?v=41"></script>
-<script src="spectrum/spectrum.js?v=41"></script>
-<script src="spectrum/zxui.js?v=41"></script>
-<script src="kid.js?v=41"></script>
-<script src="swipe.js?v=41"></script>
+<script src="print.js?v=42"></script>
+<script src="overlay.js?v=42"></script>
+<script src="shots.js?v=42"></script>
+<script src="album.js?v=42"></script>
+<script src="ansi.js?v=42"></script>
+<script src="ansidraw.js?v=42"></script>
+<script src="vendor/qrcode.js?v=42"></script>
+<script src="make.js?v=42"></script>
+<script src="gb.js?v=42"></script>
+<script src="gbui.js?v=42"></script>
+<script src="spectrum/z80.js?v=42"></script>
+<script src="spectrum/basic.js?v=42"></script>
+<script src="spectrum/spectrum.js?v=42"></script>
+<script src="spectrum/files.js?v=42"></script>
+<script src="spectrum/zxui.js?v=42"></script>
+<script src="kid.js?v=42"></script>
+<script src="swipe.js?v=42"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

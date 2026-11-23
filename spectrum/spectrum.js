@@ -2,7 +2,7 @@
 // ZX Spectrum 48K: Z80 + ULA (screen, keyboard, beeper), fast tape loading/saving and a ZX Printer (COPY, LPRINT, LLIST).
 class Spectrum {
   constructor(rom) {
-    this.mem = new Uint8Array(65536); this.mem.set(rom.subarray(0, 16384), 0);
+    this.mem = new Uint8Array(65536); this.setRom(rom);
     this.keys = new Uint8Array(8).fill(0xFF); this.border = 7; this.flash = false; this.frames = 0;
     this.tape = { blocks: [], pos: 0 }; this.recorded = []; this.onPrint = null; this.onSave = null; this.onLoad = null;
     this.beeper = 0; this.beepLog = []; this.tFrame = 0; this.pending = [];
@@ -12,6 +12,11 @@ class Spectrum {
       in: port => self.portIn(port), out: (port, v) => self.portOut(port, v),
     });
     this.reset();
+  }
+  // the quick tape loader and the printer hooks only apply when the ROM has the standard routines at the standard addresses
+  setRom(rom) {
+    this.mem.set(rom.subarray(0, 16384), 0); const at = (a, hex) => hex.split(' ').every((h, i) => rom[a + i] === parseInt(h, 16));
+    this.hook = { load: at(0x0556, '14 08 15 F3 3E 0F D3 FE 21 3F 05 E5'), save: at(0x04C2, '21 3F 05 E5 21 80 1F CB 7F'), copy: at(0x0EAC, 'F3 06 B0 21 00 40 E5 C5'), buff: at(0x0ECD, 'F3 21 00 5B 06 08 C5 CD') };
   }
   reset() { const c = this.cpu; this.mem.fill(0, 0x4000); c.R.fill(0); c.sh.fill(0); c.f = c.fs = 0; c.pc = 0; c.sp = 0xFFFF; c.ix = c.iy = 0; c.i = c.r = 0; c.iff1 = c.iff2 = false; c.im = 0; c.halted = false; c.eiDelay = false; this.border = 7; this.tFrame = 0; this.beepLog = []; }
   // ---- ports ----
@@ -30,10 +35,10 @@ class Spectrum {
     this.tFrame = c.interrupt() || 0; // the ULA raises INT at the start of every frame
     while (this.tFrame < FR) {
       const pc = c.pc;
-      if (pc === 0x0556 && this.tape.blocks.length && this.trapLoad()) continue;
-      else if (pc === 0x04C2 && this.trapSave()) continue;
-      else if (pc === 0x0EAC) { this.printScreen(); c.pc = 0x0EDA; continue; }
-      else if (pc === 0x0ECD) { this.printBuffer(); c.pc = 0x0EDA; continue; }
+      if (pc === 0x0556 && this.hook.load && this.tape.blocks.length && this.trapLoad()) continue;
+      else if (pc === 0x04C2 && this.hook.save && this.trapSave()) continue;
+      else if (pc === 0x0EAC && this.hook.copy) { this.printScreen(); c.pc = 0x0EDA; continue; }
+      else if (pc === 0x0ECD && this.hook.buff) { this.printBuffer(); c.pc = 0x0EDA; continue; }
       this.tFrame += c.step();
     }
     this.frames++; if ((this.frames & 15) === 0) this.flash = !this.flash;

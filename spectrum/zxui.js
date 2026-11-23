@@ -88,6 +88,39 @@ const ZX = (() => {
   }
   function showListing(name, text) { let d = $$('kiddlg'); if (d) d.remove(); d = document.createElement('div'); d.id = 'kiddlg'; d.innerHTML = `<div class="kidcard"><h3>${name}</h3><pre style="white-space:pre-wrap;font:12px/1.35 ui-monospace,monospace;max-height:55vh;overflow:auto;background:#111;padding:8px;border-radius:8px">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre><div class="row"><button type="button" id="zxcopylist">Copy</button><button type="button" id="zxclose" class="pri">Close</button></div></div>`; document.body.appendChild(d); d.onclick = e => { if (e.target === d) d.remove(); }; $$('zxclose').onclick = () => d.remove(); $$('zxcopylist').onclick = async () => { try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (e) { } }; }
 
+
+  // ---------- opening files: tapes, snapshots, ROMs, and ZIPs of those ----------
+  const ROMKEY = 'catcam-zxrom'; let origRom = null, romName = 'Sinclair 48K (original)';
+  const kindOf = (name, size) => { const x = ZXFiles.ext(name); if (x === 'tap' || x === 'tzx') return 'tape'; if (x === 'z80' || x === 'sna') return 'snap'; if ((x === 'rom' || x === 'bin') && size % 16384 === 0 && size <= 65536) return 'rom'; return null; };
+  function describeRom() { const h = spec.hook; $$('zxromname').textContent = `ROM: ${romName}` + (h.load && h.copy ? '' : ` — this ROM has no standard ${!h.load ? 'tape' : ''}${!h.load && !h.copy ? ' or ' : ''}${!h.copy ? 'printer' : ''} routines, so ${!h.load ? 'quick tape loading' : ''}${!h.load && !h.copy ? ' and ' : ''}${!h.copy ? 'COPY printing' : ''} will not work`); }
+  function useRom(bytes, name, save = true) {
+    let rom = bytes, note = ''; if (bytes.length > 16384) { rom = bytes.slice(bytes.length - 16384); note = ' (it holds several ROMs, so I used the last 16K, the 48K BASIC)'; }
+    if (rom.length !== 16384) throw new Error('A Spectrum ROM must be 16K (16384 bytes); this one is ' + bytes.length);
+    spec.setRom(rom); spec.reset(); for (let i = 0; i < 100; i++) spec.runFrame(); romName = name;
+    if (save) { try { localStorage.setItem(ROMKEY, JSON.stringify({ name, b64: b64(rom) })); } catch (e) { } }
+    describeRom(); toast('Using ROM: ' + name + note); renderTape();
+  }
+  function useOriginalRom() { try { localStorage.removeItem(ROMKEY); } catch (e) { } useRom(origRom, 'Sinclair 48K (original)', false); }
+  async function useData(name, data) {
+    const x = ZXFiles.ext(name);
+    if (x === 'tap' || x === 'tzx') { const blocks = x === 'tap' ? ZXBasic.fromTap(data) : ZXFiles.tzxBlocks(data); if (!blocks.length) throw new Error('that tape is empty'); const base = name.replace(/^.*\//, '').replace(/\.\w+$/, ''); addLib(base, blocks); insert(blocks, base, false); return; }
+    if (x === 'sna' || x === 'z80') { spec.reset(); (x === 'sna' ? ZXFiles.loadSna : ZXFiles.loadZ80)(spec, data); toast('Snapshot loaded: ' + name.replace(/^.*\//, '')); return; }
+    if (x === 'rom' || x === 'bin') { useRom(data, name.replace(/^.*\//, '')); return; }
+    throw new Error('I do not know what to do with a .' + x + ' file (try .tap .tzx .z80 .sna .rom or a .zip of those)');
+  }
+  async function openFile(file) {
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer()), x = ZXFiles.ext(file.name);
+      if (x !== 'zip') { await useData(file.name, bytes); return; }
+      const items = ZXFiles.zipList(bytes).map(e => ({ e, kind: kindOf(e.name, e.size) })).filter(i => i.kind);
+      if (!items.length) throw new Error('Nothing the Spectrum can use in that ZIP (I look for .tap .tzx .z80 .sna and 16K .rom files)');
+      if (items.length === 1) { await useData(items[0].e.name, await ZXFiles.zipRead(bytes, items[0].e)); return; }
+      let d = $$('kiddlg'); if (d) d.remove(); d = document.createElement('div'); d.id = 'kiddlg'; d.innerHTML = `<div class="kidcard"><h3>${file.name}</h3><div class="sub">Pick what to use:</div><div id="zxpick"></div><div class="row"><button type="button" id="zxpclose">Cancel</button></div></div>`; document.body.appendChild(d);
+      $$('zxpclose').onclick = () => d.remove(); d.onclick = ev => { if (ev.target === d) d.remove(); };
+      for (const it of items) { const row = document.createElement('div'); row.className = 'zxitem'; const label = { tape: 'Add tape', snap: 'Load snapshot', rom: 'Use as ROM' }[it.kind]; row.innerHTML = `<span>${it.e.name} <small>(${it.e.size} bytes)</small></span>`; const b = document.createElement('button'); b.type = 'button'; b.className = 'pri'; b.textContent = label; b.onclick = async () => { try { await useData(it.e.name, await ZXFiles.zipRead(bytes, it.e)); d.remove(); } catch (er) { toast(er.message, 'bad'); } }; row.appendChild(b); $$('zxpick').appendChild(row); }
+    } catch (e) { toast(e.message, 'bad'); }
+  }
+
   // ---------- main loop ----------
   function loop(t) {
     requestAnimationFrame(loop); const dt = Math.min(100, t - lastT); lastT = t;
@@ -98,10 +131,12 @@ const ZX = (() => {
   async function init() {
     scr = $$('zxscreen'); sx = scr.getContext('2d'); img = sx.createImageData(SW, SH); scr.width = SW; scr.height = SH;
     let rom; try { rom = new Uint8Array(await (await fetch('spectrum/48.rom')).arrayBuffer()); if (rom.length !== 16384) throw new Error('bad ROM'); } catch (e) { $$('zxhint').textContent = 'Could not load the Spectrum ROM (' + e.message + ').'; return; }
-    spec = new Spectrum(rom); spec.onPrint = onPrint; spec.onLoad = (blk, ok) => { renderTape(); if (autoRun && blk[0] === 0xFF && ok) { autoRun = false; setTimeout(() => typeKeys(RUN_SEQ), 400); } };
+    origRom = rom; spec = new Spectrum(rom); spec.onPrint = onPrint; spec.onLoad = (blk, ok) => { renderTape(); if (autoRun && blk[0] === 0xFF && ok) { autoRun = false; setTimeout(() => typeKeys(RUN_SEQ), 400); } };
     spec.onSave = (blk, all) => { if (blk[0] === 0xFF && all.length >= 2 && all[all.length - 2][0] === 0) { const h = all[all.length - 2], name = String.fromCharCode(...h.slice(2, 12)).trim() || 'program'; addLib(name + ' (' + new Date().toLocaleDateString() + ')', [h, blk]); spec.recorded = []; toast('Saved “' + name + '” to your programs'); } };
     try { flagListing = await (await fetch('spectrum/flag.bas')).text(); } catch (e) { flagListing = '10 PRINT "FLAG PROGRAM MISSING"'; }
-    loadLib(); renderLib(); renderTape(); buildKeys(); $$('zxhint').textContent = '';
+    loadLib(); renderLib(); buildKeys(); $$('zxhint').textContent = '';
+    try { const j = JSON.parse(localStorage.getItem(ROMKEY) || 'null'); if (j && j.b64) { const r = unb64(j.b64); if (r.length === 16384) { spec.setRom(r); spec.reset(); romName = j.name; } } } catch (e) { }
+    describeRom(); renderTape();
     for (let i = 0; i < 100; i++) spec.runFrame(); // let the ROM start up
     requestAnimationFrame(loop);
   }
@@ -115,12 +150,14 @@ const ZX = (() => {
     $$('zxload').onclick = () => typeKeys(LOAD_SEQ); $$('zxrun').onclick = () => typeKeys(RUN_SEQ); $$('zxlist').onclick = () => typeKeys([['K'], ['ENTER']]);
     $$('zxrewind').onclick = () => { spec.tape.pos = 0; renderTape(); }; $$('zxeject').onclick = () => { spec.insert([]); renderTape(); };
     $$('zxopen').onclick = () => $$('zxfile').click();
-    $$('zxfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const blocks = ZXBasic.fromTap(new Uint8Array(await f.arrayBuffer())); if (!blocks.length) throw new Error('empty'); addLib(f.name.replace(/\.tap$/i, ''), blocks); toast('Added ' + f.name); } catch (err) { toast('That does not look like a .TAP file', 'bad'); } };
+    $$('zxfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) openFile(f); };
+    $$('zxorig').onclick = useOriginalRom;
+    $$('zxsnap').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ZXFiles.saveSna(spec)])); a.download = 'zx-snapshot.sna'; a.click(); toast('Snapshot saved'); };
     $$('zxmake').onclick = () => { const text = $$('zxbas').value, name = ($$('zxname').value || 'program').trim().slice(0, 10), { lines } = ZXBasic.compile(text); if (!lines) { toast('No numbered lines found (each line must start with a line number)', 'bad'); return; } const blocks = ZXBasic.programTape(name, text, -1); addLib(name, blocks); insert(blocks, name, false); toast(lines + ' lines turned into a tape. Tap LOAD, then RUN.'); };
     document.addEventListener('keydown', e => onKey(e, true)); document.addEventListener('keyup', e => onKey(e, false));
   }
   function onShow() { if (!started) { started = true; bind(); init(); } }
-  const api = { onShow, get spec() { return spec; }, press, typeKeys, showPage };
+  const api = { onShow, get spec() { return spec; }, press, typeKeys, showPage, openFile, useRom, useOriginalRom };
   return api;
 })();
 window.ZX = ZX;
