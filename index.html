@@ -121,16 +121,27 @@ body.kid button,body.kid select{min-height:46px}
 #kiddlg h3{margin:0 0 6px}
 #kiddlg input{margin:6px 0}
 /* ---- keep the camera on screen while you scroll the controls ---- */
-#stage{position:sticky;top:calc(var(--tabsh,62px) + 4px);z-index:12;display:flex;justify-content:center;box-shadow:0 8px 14px -8px rgba(0,0,0,.7)}
-#stage #view{width:auto;max-width:100%;max-height:36vh;aspect-ratio:8/7}
+#camdock{position:sticky;top:calc(var(--tabsh,62px) + 4px);z-index:12;background:var(--bg);padding-bottom:2px;box-shadow:0 10px 14px -10px rgba(0,0,0,.8)}
+#camdock #stage{display:flex;justify-content:center}
+#camdock #view{width:auto;max-width:100%;max-height:30vh;aspect-ratio:8/7}
+#camdock #shutterrow{margin:8px 0 4px}
+#camdock #shutter{flex:0 0 64px;height:64px;border-width:5px;outline-width:2px}
+body.kid #camdock #shutter{flex:0 0 72px;height:72px}
 </style></head>
 <body>
-<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v22</small></h1><span id="status">printer: not connected</span></header>
+<header><h1>🐱 CatCam <small style="font-weight:400;color:var(--dim);font-size:11px">v23</small></h1><span id="status">printer: not connected</span></header>
 <nav id="tabs" class="row"><button id="tabcam" class="pri"><span style="font-size:18px">📷</span>Cam</button><button id="tabfx"><span style="font-size:18px">✨</span>Fun</button><button id="tabpr"><span style="font-size:18px">🖨</span>Print</button><button id="tabmk"><span style="font-size:18px">🎲</span>Make</button><button id="tabgb"><span style="font-size:18px">🎮</span>GB</button></nav>
 
+<div id="camdock">
 <div id="stage"><canvas id="view" width="384" height="336"></canvas><div id="hint">Starting camera…</div><div id="count" hidden></div></div>
-<div id="camview">
 <div id="prog"><i></i></div>
+<div class="row" id="shutterrow">
+  <button id="flip">⟲ Flip</button>
+  <button id="shutter" class="pri" aria-label="Shutter">●</button>
+  <button id="print" class="pri" disabled>🖨 Print</button>
+</div>
+</div>
+<div id="camview">
 <div class="row" style="margin-top:10px">
   <select id="look"><option value="mono">Look: Mono</option><option value="gbc">Look: Game Boy Color (tile palettes)</option><option value="cdith">Look: Colour dither (better camera)</option></select>
 </div>
@@ -142,11 +153,6 @@ body.kid button,body.kid select{min-height:46px}
 <div class="sub" id="lookhint" style="margin-top:0">Colour look is a preview and PNG only; the printer always prints black &amp; white from the same photo.</div>
 
 
-<div class="row">
-  <button id="flip">⟲ Flip</button>
-  <button id="shutter" class="pri" aria-label="Shutter">●</button>
-  <button id="print" class="pri" disabled>🖨 Print</button>
-</div>
 <div class="row" id="shotrow">
   <select id="shotmode"><option value="single">Single shot</option><option value="burst">Burst ×4</option><option value="strip3">Photo strip ×3</option><option value="strip4">Photo strip ×4</option></select>
   <select id="timer"><option value="0">No timer</option><option value="3">3 s timer</option><option value="5">5 s timer</option><option value="10">10 s timer</option></select>
@@ -273,10 +279,10 @@ body.kid button,body.kid select{min-height:46px}
 <div id="gallery" style="margin-top:10px"></div><div class="sub" id="empty">No photos yet.</div></details></div>
 <details><summary>Log</summary><div class="row"><button id="copylog" type="button">Copy log</button></div><div id="log"></div></details>
 
-<script src="gbc.js?v=22"></script>
-<script src="fx.js?v=22"></script>
-<script src="fx2.js?v=22"></script>
-<script src="goo.js?v=22"></script>
+<script src="gbc.js?v=23"></script>
+<script src="fx.js?v=23"></script>
+<script src="fx2.js?v=23"></script>
+<script src="goo.js?v=23"></script>
 <script>
 'use strict';
 const W=384,H=336,GW=128,GH=112,ROWB=48;
@@ -499,14 +505,14 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 startCam();requestAnimationFrame(frame);
 window.catcam={process,buildJob,pkt,crc8,packBits,cfg,loadBitmap,mock,doPrint,get bits(){return lastBits}};
 </script>
-<script src="print.js?v=22"></script>
-<script src="overlay.js?v=22"></script>
-<script src="shots.js?v=22"></script>
-<script src="album.js?v=22"></script>
-<script src="vendor/qrcode.js?v=22"></script>
-<script src="make.js?v=22"></script>
-<script src="gb.js?v=22"></script>
-<script src="gbui.js?v=22"></script>
-<script src="kid.js?v=22"></script>
+<script src="print.js?v=23"></script>
+<script src="overlay.js?v=23"></script>
+<script src="shots.js?v=23"></script>
+<script src="album.js?v=23"></script>
+<script src="vendor/qrcode.js?v=23"></script>
+<script src="make.js?v=23"></script>
+<script src="gb.js?v=23"></script>
+<script src="gbui.js?v=23"></script>
+<script src="kid.js?v=23"></script>
 <script>(()=>{const t=document.getElementById('tabs'),f=()=>document.documentElement.style.setProperty('--tabsh',t.offsetHeight+'px');f();addEventListener('resize',f);if(window.ResizeObserver)new ResizeObserver(f).observe(t)})()</script>
 </body></html>

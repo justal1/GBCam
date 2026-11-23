@@ -16,7 +16,7 @@
   // ---- tabs ----
   function setTab(t) {
     tab = t; const gm = t === 'gb', hideCam = gm || t === 'pr' || t === 'mk';
-    camv.forEach(e => e.hidden = hideCam); $('stage').hidden = hideCam; gbv.hidden = !gm; $('printview').hidden = t !== 'pr'; $('makeview').hidden = t !== 'mk';
+    camv.forEach(e => e.hidden = hideCam); $('camdock').hidden = hideCam; gbv.hidden = !gm; $('printview').hidden = t !== 'pr'; $('makeview').hidden = t !== 'mk';
     $('camsettings').hidden = t === 'fx'; $('fxpanel').hidden = t !== 'fx';
     for (const k of ['cam', 'fx', 'pr', 'mk', 'gb']) $('tab' + k).className = t === k ? 'pri' : '';
     $('view').style.touchAction = t === 'fx' ? 'none' : 'pan-y';
