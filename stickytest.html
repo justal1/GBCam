@@ -1,0 +1,10 @@
+<!doctype html><body style="margin:0;background:#222;display:flex;gap:6px"><div id=o style="color:#0f0;font:11px monospace;width:200px"></div>
+<iframe id=a src="index.html" width=390 height=800 style="border:0"></iframe><iframe id=b src="index.html?b" width=390 height=800 style="border:0"></iframe><script>
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));const L=t=>document.getElementById('o').textContent+=t+'\n';
+const setup=async(id,tabName,scroll)=>{const f=document.getElementById(id);await new Promise(r=>f.onload=r);await sleep(700);const w=f.contentWindow,d=w.document;
+ d.getElementById(tabName).click();await sleep(200);
+ const c=d.getElementById('view'),x=c.getContext('2d');const g=x.createLinearGradient(0,0,384,336);g.addColorStop(0,'#f6c');g.addColorStop(1,'#36f');x.fillStyle=g;x.fillRect(0,0,384,336);d.getElementById('hint').style.display='none';
+ w.scrollTo(0,scroll);await sleep(200);const r=d.getElementById('stage').getBoundingClientRect();L(id+' '+tabName+' scrollY='+Math.round(w.scrollY)+'/'+d.documentElement.scrollHeight+' stage top='+Math.round(r.top)+' h='+Math.round(r.height)+' visible='+(r.top>=0&&r.bottom>0))};
+(async()=>{await Promise.all([setup('a','tabcam',99999),setup('b','tabfx',1500)]);
+ const w=document.getElementById('a').contentWindow,d=w.document;d.getElementById('tabmk').click();await sleep(200);L('make tab: stage hidden='+d.getElementById('stage').hidden);d.getElementById('tabcam').click();await sleep(100);L('back to cam: stage hidden='+d.getElementById('stage').hidden);L('DONE')})();
+</script></body>
